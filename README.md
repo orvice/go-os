@@ -1,7 +1,7 @@
 # Go OS [![License](https://img.shields.io/:license-apache-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![GoDoc](https://godoc.org/github.com/micro/go-os?status.svg)](https://godoc.org/github.com/micro/go-os) [![Travis CI](https://api.travis-ci.org/micro/go-os.svg?branch=master)](https://travis-ci.org/micro/go-os) [![Go Report Card](https://goreportcard.com/badge/micro/go-os)](https://goreportcard.com/report/github.com/micro/go-os)
 
-Go-OS is a microservice operating system library which provides client side interfaces for [Micro OS](https://github.com/micro/os). It's primary function 
-is to address the higher level requirements for microservices not addressed by the Micro toolkit. These include; authentication, 
+Go-OS is a microservice OS library for [Micro OS](https://github.com/micro/os). It's primary function 
+is to address the higher level requirements for microservices not covered by the Micro toolkit. These include; authentication, 
 dynamic configuration, distributed tracing, instrumentation, logging, monitoring, synchronisation and so on.
 
 NOTE: This is still a work in progress. The interfaces may change or break.
@@ -9,7 +9,7 @@ NOTE: This is still a work in progress. The interfaces may change or break.
 ## What's it for?
 
 At a certain a scale there's a need for systems that manage identity, configuration, observability, state, etc. 
-These are not core requirements for writing microservices but when you build a system with 20+ services or 
+These are not core requirements for writing microservices but when building a system with 20+ services or 
 are architecting a system for production use within an organisation it becomes a requirement for software 
 development and operational management.
 
@@ -19,7 +19,7 @@ having to use everything.
 
 ## How does it work?
 
-Go-OS is a client side interface for the fundamentals of a microservice operating system. Each package connects to 
+Go-OS is a library for the fundamentals of a microservice OS. Each package connects to 
 a backend service which handles that feature. Everything is an interface and pluggable which means you can choose how to 
 architect your OS. Micro OS provides default implementations for everything. You can find the OS services at 
 [github.com/micro/os](https://github.com/micro/os).
