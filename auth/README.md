@@ -24,8 +24,8 @@ and initialised when registering a handler.
 type Auth interface {
 	Authorized(ctx context.Context, req Request) (*Token, error)
 	Introspect(ctx context.Context) (*Token, error)
-	Token() (*Token, error)
 	Revoke(t *Token) error
+	Token() (*Token, error)
 	String() string
 }
 
