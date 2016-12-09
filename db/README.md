@@ -126,9 +126,9 @@ func main() {
         
         // Search using metadata
         records, err := database.Search(
-		database.WithMetadata(db.Metadata{"key": "value"}), 
-		database.WithLimit(10),
-		database.WithOffset(0),
+                db.WithMetadata(db.Metadata{"key": "value"}), 
+                db.WithLimit(10),
+                db.WithOffset(0),
 	)
         if err != nil {
                 fmt.Println(err)
