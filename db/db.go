@@ -9,11 +9,13 @@ type DB interface {
 	Create(r Record) error
 	Update(r Record) error
 	Delete(id string) error
-	Search(md Metadata, limit, offset int64) ([]Record, error)
+	Search(...SearchOption) ([]Record, error)
 	String() string
 }
 
 type Option func(*Options)
+
+type SearchOption func(*SearchOptions)
 
 type Metadata map[string]interface{}
 

@@ -29,7 +29,7 @@ type DB interface {
         Create(r Record) error
         Update(r Record) error
         Delete(id string) error
-        Search(md Metadata, limit, offset int64) ([]Record, error)
+        Search(...SearchOption) ([]Record, error)
         String() string
 }
 
@@ -125,7 +125,11 @@ func main() {
         fmt.Println("Searching for metadata key:value")
         
         // Search using metadata
-        records, err := database.Search(db.Metadata{"key": "value"}, 10, 0)
+        records, err := database.Search(
+		database.WithMetadata(db.Metadata{"key": "value"}), 
+		database.WithLimit(10),
+		database.WithOffset(0),
+	)
         if err != nil {
                 fmt.Println(err)
                 return

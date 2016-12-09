@@ -139,9 +139,18 @@ func (o *os) Delete(id string) error {
 	return err
 }
 
-func (o *os) Search(md Metadata, limit, offset int64) ([]Record, error) {
+func (o *os) Search(opts ...SearchOption) ([]Record, error) {
+	options := SearchOptions{
+		Limit:  10,
+		Offset: 0,
+	}
+
+	for _, o := range opts {
+		o(&options)
+	}
+
 	metadata := map[string]string{}
-	for k, v := range md {
+	for k, v := range options.Metadata {
 		metadata[k] = fmt.Sprintf("%v", v)
 	}
 
@@ -151,8 +160,8 @@ func (o *os) Search(md Metadata, limit, offset int64) ([]Record, error) {
 			Table: o.opts.Table,
 		},
 		Metadata: metadata,
-		Limit:    limit,
-		Offset:   offset,
+		Limit:    options.Limit,
+		Offset:   options.Offset,
 	})
 	if err != nil {
 		return nil, err

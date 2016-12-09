@@ -44,7 +44,11 @@ func main() {
 	fmt.Printf("Read record: id: %s metadata: %+v bytes: %+v\n", rec.Id(), rec.Metadata(), thing)
 
 	fmt.Println("Searching for metadata key:value")
-	records, err := database.Search(db.Metadata{"key": "value"}, 10, 0)
+	records, err := database.Search(
+		db.WithMetadata(db.Metadata{"key": "value"}),
+		db.WithLimit(10),
+		db.WithOffset(0),
+	)
 	if err != nil {
 		fmt.Println(err)
 		return
