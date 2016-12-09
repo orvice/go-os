@@ -18,7 +18,7 @@ var (
 	ErrNotAvailable  = errors.New("not available")
 )
 
-type platform struct {
+type os struct {
 	exit              chan bool
 	opts              Options
 	name, version, id string
@@ -28,7 +28,7 @@ type platform struct {
 	stat *stats
 }
 
-func newPlatform(opts ...Option) Monitor {
+func newOS(opts ...Option) Monitor {
 	var opt Options
 	for _, o := range opts {
 		o(&opt)
@@ -48,7 +48,7 @@ func newPlatform(opts ...Option) Monitor {
 
 	c := opt.Server.Options()
 
-	p := &platform{
+	o := &os{
 		stat:    newStats(),
 		name:    c.Name,
 		version: c.Version,
@@ -58,22 +58,22 @@ func newPlatform(opts ...Option) Monitor {
 		hc:      make(map[string]HealthChecker),
 	}
 
-	go p.run()
-	return p
+	go o.run()
+	return o
 }
 
-func (p *platform) stats() {
-	o := p.stat
+func (o *os) stats() {
+	ostat := o.stat
 	s := newStats()
 
 	// update
-	p.stat = s
+	o.stat = s
 
 	cpu := &proto.CPU{
-		UserTime:     uint64(s.utime.Nano() - o.utime.Nano()),
-		SystemTime:   uint64(s.stime.Nano() - o.stime.Nano()),
-		VolCtxSwitch: uint64(s.volCtx - o.volCtx),
-		InvCtxSwitch: uint64(s.invCtx - o.invCtx),
+		UserTime:     uint64(s.utime.Nano() - ostat.utime.Nano()),
+		SystemTime:   uint64(s.stime.Nano() - ostat.stime.Nano()),
+		VolCtxSwitch: uint64(s.volCtx - ostat.volCtx),
+		InvCtxSwitch: uint64(s.invCtx - ostat.invCtx),
 	}
 
 	memory := &proto.Memory{
@@ -81,8 +81,8 @@ func (p *platform) stats() {
 	}
 
 	disk := &proto.Disk{
-		InBlock: uint64(s.inBlock - o.inBlock),
-		OuBlock: uint64(s.ouBlock - o.ouBlock),
+		InBlock: uint64(s.inBlock - ostat.inBlock),
+		OuBlock: uint64(s.ouBlock - ostat.ouBlock),
 	}
 
 	rm := runtime.MemStats{}
@@ -96,46 +96,46 @@ func (p *platform) stats() {
 
 	statsProto := &proto.Stats{
 		Service: &proto.Service{
-			Name:    p.name,
-			Version: p.version,
+			Name:    o.name,
+			Version: o.version,
 			Nodes: []*proto.Node{&proto.Node{
-				Id: p.id,
+				Id: o.id,
 			}},
 		},
-		Interval:  int64(p.opts.Interval.Seconds()),
+		Interval:  int64(o.opts.Interval.Seconds()),
 		Timestamp: time.Now().Unix(),
 		Ttl:       3600,
 		Cpu:       cpu,
 		Memory:    memory,
 		Disk:      disk,
 		Runtime:   rtime,
-		Endpoints: o.endpoints(),
+		Endpoints: ostat.endpoints(),
 	}
 
-	req := p.opts.Client.NewPublication(StatsTopic, statsProto)
-	p.opts.Client.Publish(context.TODO(), req)
+	req := o.opts.Client.NewPublication(StatsTopic, statsProto)
+	o.opts.Client.Publish(context.TODO(), req)
 }
 
-func (p *platform) status(status proto.Status_Status) {
+func (o *os) status(status proto.Status_Status) {
 	statusProto := &proto.Status{
 		Status: status,
 		Service: &proto.Service{
-			Name:    p.name,
-			Version: p.version,
+			Name:    o.name,
+			Version: o.version,
 			Nodes: []*proto.Node{&proto.Node{
-				Id: p.id,
+				Id: o.id,
 			}},
 		},
-		Interval:  int64(p.opts.Interval.Seconds()),
+		Interval:  int64(o.opts.Interval.Seconds()),
 		Timestamp: time.Now().Unix(),
 		Ttl:       3600,
 	}
 
-	req := p.opts.Client.NewPublication(StatusTopic, statusProto)
-	p.opts.Client.Publish(context.TODO(), req)
+	req := o.opts.Client.NewPublication(StatusTopic, statusProto)
+	o.opts.Client.Publish(context.TODO(), req)
 }
 
-func (p *platform) update(h HealthChecker) {
+func (o *os) update(h HealthChecker) {
 	res, err := h.Run()
 	status := proto.HealthCheck_OK
 	errDesc := ""
@@ -149,99 +149,99 @@ func (p *platform) update(h HealthChecker) {
 		Description: h.Description(),
 		Timestamp:   time.Now().Unix(),
 		Service: &proto.Service{
-			Name:    p.name,
-			Version: p.version,
+			Name:    o.name,
+			Version: o.version,
 			Nodes: []*proto.Node{&proto.Node{
-				Id: p.id,
+				Id: o.id,
 			}},
 		},
-		Interval: int64(p.opts.Interval.Seconds()),
+		Interval: int64(o.opts.Interval.Seconds()),
 		Ttl:      3600,
 		Status:   status,
 		Results:  res,
 		Error:    errDesc,
 	}
 
-	req := p.opts.Client.NewPublication(HealthCheckTopic, hcProto)
-	p.opts.Client.Publish(context.TODO(), req)
+	req := o.opts.Client.NewPublication(HealthCheckTopic, hcProto)
+	o.opts.Client.Publish(context.TODO(), req)
 }
 
-func (p *platform) run() {
+func (o *os) run() {
 	// publish started status
-	p.status(proto.Status_STARTED)
+	o.status(proto.Status_STARTED)
 
-	t := time.NewTicker(p.opts.Interval)
+	t := time.NewTicker(o.opts.Interval)
 
 	for {
 		select {
 		case <-t.C:
-			p.Lock()
+			o.Lock()
 			// publish stats
-			p.stats()
+			o.stats()
 			// publish status
-			p.status(proto.Status_RUNNING)
+			o.status(proto.Status_RUNNING)
 			// publish healthchecks
-			for _, check := range p.hc {
-				go p.update(check)
+			for _, check := range o.hc {
+				go o.update(check)
 			}
-			p.Unlock()
-		case <-p.exit:
+			o.Unlock()
+		case <-o.exit:
 			// stop the ticker
 			t.Stop()
 			// publish started status
-			p.status(proto.Status_STOPPED)
+			o.status(proto.Status_STOPPED)
 			return
 		}
 	}
 }
 
-func (p *platform) Close() error {
+func (o *os) Close() error {
 	select {
-	case <-p.exit:
+	case <-o.exit:
 		return nil
 	default:
-		close(p.exit)
+		close(o.exit)
 	}
 	return nil
 }
 
-func (p *platform) NewHealthChecker(id, desc string, hc HealthCheck) HealthChecker {
+func (o *os) NewHealthChecker(id, desc string, hc HealthCheck) HealthChecker {
 	return newHealthChecker(id, desc, hc)
 }
 
-func (p *platform) Register(hc HealthChecker) error {
-	p.Lock()
-	defer p.Unlock()
-	if _, ok := p.hc[hc.Id()]; ok {
+func (o *os) Register(hc HealthChecker) error {
+	o.Lock()
+	defer o.Unlock()
+	if _, ok := o.hc[hc.Id()]; ok {
 		return ErrAlreadyExists
 	}
-	p.hc[hc.Id()] = hc
+	o.hc[hc.Id()] = hc
 	return nil
 }
 
-func (p *platform) Deregister(hc HealthChecker) error {
-	p.Lock()
-	defer p.Unlock()
-	delete(p.hc, hc.Id())
+func (o *os) Deregister(hc HealthChecker) error {
+	o.Lock()
+	defer o.Unlock()
+	delete(o.hc, hc.Id())
 	return nil
 }
 
-func (p *platform) HealthChecks() ([]HealthChecker, error) {
+func (o *os) HealthChecks() ([]HealthChecker, error) {
 	var hcs []HealthChecker
-	p.Lock()
-	for _, hc := range p.hc {
+	o.Lock()
+	for _, hc := range o.hc {
 		hcs = append(hcs, hc)
 	}
-	p.Unlock()
+	o.Unlock()
 	return hcs, nil
 }
 
-func (p *platform) RecordStat(r Request, d time.Duration, err error) {
-	p.Lock()
-	p.stat.record(r, d, err)
-	p.Unlock()
+func (o *os) RecordStat(r Request, d time.Duration, err error) {
+	o.Lock()
+	o.stat.record(r, d, err)
+	o.Unlock()
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }

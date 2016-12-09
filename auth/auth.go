@@ -73,5 +73,5 @@ func HandlerWrapper(a Auth) server.HandlerWrapper {
 }
 
 func NewAuth(opts ...Option) Auth {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }

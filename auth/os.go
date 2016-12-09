@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-type platform struct {
+type os struct {
 	exit chan bool
 	opts Options
 	c    oauth2.Oauth2Client
@@ -23,7 +23,7 @@ type platform struct {
 
 type tokenKey struct{}
 
-func newPlatform(opts ...Option) Auth {
+func newOS(opts ...Option) Auth {
 	var options Options
 	for _, o := range opts {
 		o(&options)
@@ -32,18 +32,16 @@ func newPlatform(opts ...Option) Auth {
 		options.Client = client.DefaultClient
 	}
 
-	p := &platform{
+	return &os{
 		exit: make(chan bool),
 		opts: options,
 		c:    oauth2.NewOauth2Client("go.micro.srv.auth", options.Client),
 	}
-
-	return p
 }
 
-func (p *platform) Authorized(ctx context.Context, req Request) (*Token, error) {
+func (o *os) Authorized(ctx context.Context, req Request) (*Token, error) {
 	// There's no policies yet. Just check if the token is valid.
-	t, err := p.Introspect(ctx)
+	t, err := o.Introspect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -54,30 +52,30 @@ func (p *platform) Authorized(ctx context.Context, req Request) (*Token, error) 
 	return t, nil
 }
 
-func (p *platform) Token() (*Token, error) {
-	p.Lock()
-	defer p.Unlock()
+func (o *os) Token() (*Token, error) {
+	o.Lock()
+	defer o.Unlock()
 
 	// we should have cached the token and if it hasn't expired we'll hand it back
-	if p.t != nil && len(p.t.AccessToken) > 0 && !p.t.ExpiresAt.Before(time.Now()) {
-		return p.t, nil
+	if o.t != nil && len(o.t.AccessToken) > 0 && !o.t.ExpiresAt.Before(time.Now()) {
+		return o.t, nil
 	}
 
 	var grantType, refreshToken string
 
 	// if its nil, ask for new token
-	if p.t == nil {
+	if o.t == nil {
 		grantType = "client_credentials"
 	} else {
 		// ask for refresh token
 		grantType = "refresh_token"
-		refreshToken = p.t.RefreshToken
+		refreshToken = o.t.RefreshToken
 	}
 
-	rsp, err := p.c.Token(context.TODO(), &oauth2.TokenRequest{
+	rsp, err := o.c.Token(context.TODO(), &oauth2.TokenRequest{
 		GrantType:    grantType,
-		ClientId:     p.opts.Id,
-		ClientSecret: p.opts.Secret,
+		ClientId:     o.opts.Id,
+		ClientSecret: o.opts.Secret,
 		RefreshToken: refreshToken,
 	})
 
@@ -87,7 +85,7 @@ func (p *platform) Token() (*Token, error) {
 	}
 
 	// save token for reuse
-	p.t = &Token{
+	o.t = &Token{
 		AccessToken:  rsp.Token.AccessToken,
 		RefreshToken: rsp.Token.RefreshToken,
 		TokenType:    rsp.Token.TokenType,
@@ -96,23 +94,23 @@ func (p *platform) Token() (*Token, error) {
 		Metadata:     rsp.Token.Metadata,
 	}
 
-	return p.t, nil
+	return o.t, nil
 }
 
-func (p *platform) Introspect(ctx context.Context) (*Token, error) {
-	t, ok := p.FromContext(ctx)
+func (o *os) Introspect(ctx context.Context) (*Token, error) {
+	t, ok := o.FromContext(ctx)
 	if !ok {
 		md, kk := metadata.FromContext(ctx)
 		if !kk {
 			return nil, ErrInvalidToken
 		}
-		t, ok = p.FromHeader(md)
+		t, ok = o.FromHeader(md)
 		if !ok {
 			return nil, ErrInvalidToken
 		}
 	}
 
-	rsp, err := p.c.Introspect(context.TODO(), &oauth2.IntrospectRequest{
+	rsp, err := o.c.Introspect(context.TODO(), &oauth2.IntrospectRequest{
 		AccessToken: t.AccessToken,
 	})
 	if err != nil {
@@ -134,24 +132,24 @@ func (p *platform) Introspect(ctx context.Context) (*Token, error) {
 	}, nil
 }
 
-func (p *platform) Revoke(t *Token) error {
-	_, err := p.c.Revoke(context.TODO(), &oauth2.RevokeRequest{
+func (o *os) Revoke(t *Token) error {
+	_, err := o.c.Revoke(context.TODO(), &oauth2.RevokeRequest{
 		AccessToken:  t.AccessToken,
 		RefreshToken: t.RefreshToken,
 	})
 	return err
 }
 
-func (p *platform) FromContext(ctx context.Context) (*Token, bool) {
+func (o *os) FromContext(ctx context.Context) (*Token, bool) {
 	t, ok := ctx.Value(tokenKey{}).(*Token)
 	return t, ok
 }
 
-func (p *platform) NewContext(ctx context.Context, t *Token) context.Context {
+func (o *os) NewContext(ctx context.Context, t *Token) context.Context {
 	return context.WithValue(ctx, tokenKey{}, t)
 }
 
-func (p *platform) FromHeader(hd map[string]string) (*Token, bool) {
+func (o *os) FromHeader(hd map[string]string) (*Token, bool) {
 	var t string
 	var ok bool
 
@@ -178,12 +176,12 @@ func (p *platform) FromHeader(hd map[string]string) (*Token, bool) {
 	}, true
 }
 
-func (p *platform) NewHeader(hd map[string]string, t *Token) map[string]string {
+func (o *os) NewHeader(hd map[string]string, t *Token) map[string]string {
 	// we basically only store access token
 	hd["authorization"] = t.TokenType + " " + t.AccessToken
 	return hd
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }

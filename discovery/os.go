@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-type platform struct {
+type os struct {
 	exit chan bool
 	opts Options
 
@@ -27,7 +27,7 @@ type watcher struct {
 	wc proto2.Registry_WatchClient
 }
 
-func newPlatform(opts ...Option) Discovery {
+func newOS(opts ...Option) Discovery {
 	opt := Options{
 		Discovery: true,
 	}
@@ -48,7 +48,7 @@ func newPlatform(opts ...Option) Discovery {
 		opt.Interval = time.Second * 30
 	}
 
-	p := &platform{
+	o := &os{
 		exit:       make(chan bool),
 		opts:       opt,
 		heartbeats: make(map[string]*proto.Heartbeat),
@@ -56,8 +56,8 @@ func newPlatform(opts ...Option) Discovery {
 		reg:        proto2.NewRegistryClient("go.micro.srv.discovery", opt.Client),
 	}
 
-	go p.run()
-	return p
+	go o.run()
+	return o
 }
 
 func values(v []*registry.Value) []*proto.Value {
@@ -205,26 +205,26 @@ func (w *watcher) Stop() {
 	w.wc.Close()
 }
 
-func (p *platform) heartbeat(t *time.Ticker) {
+func (o *os) heartbeat(t *time.Ticker) {
 	for _ = range t.C {
-		p.RLock()
-		for _, hb := range p.heartbeats {
+		o.RLock()
+		for _, hb := range o.heartbeats {
 			hb.Timestamp = time.Now().Unix()
-			pub := p.opts.Client.NewPublication(HeartbeatTopic, hb)
-			p.opts.Client.Publish(context.TODO(), pub)
+			pub := o.opts.Client.NewPublication(HeartbeatTopic, hb)
+			o.opts.Client.Publish(context.TODO(), pub)
 		}
-		p.RUnlock()
+		o.RUnlock()
 	}
 }
 
-func (p *platform) watch(ch chan *registry.Result) {
-	watch, _ := p.Watch()
+func (o *os) watch(ch chan *registry.Result) {
+	watch, _ := o.Watch()
 	defer watch.Stop()
 
 	for {
 		next, err := watch.Next()
 		if err != nil {
-			w, err := p.Watch()
+			w, err := o.Watch()
 			if err != nil {
 				time.Sleep(time.Second)
 				continue
@@ -238,36 +238,36 @@ func (p *platform) watch(ch chan *registry.Result) {
 	}
 }
 
-func (p *platform) run() {
+func (o *os) run() {
 	ch := make(chan *registry.Result)
-	t := time.NewTicker(p.opts.Interval)
+	t := time.NewTicker(o.opts.Interval)
 
-	go p.watch(ch)
-	go p.heartbeat(t)
+	go o.watch(ch)
+	go o.heartbeat(t)
 
 	for {
 		select {
-		case <-p.exit:
+		case <-o.exit:
 			t.Stop()
 			return
 		case next, ok := <-ch:
 			if !ok {
 				return
 			}
-			p.update(next)
+			o.update(next)
 		}
 	}
 }
 
-func (p *platform) update(res *registry.Result) {
+func (o *os) update(res *registry.Result) {
 	if res == nil || res.Service == nil {
 		return
 	}
 
-	p.Lock()
-	defer p.Unlock()
+	o.Lock()
+	defer o.Unlock()
 
-	services, ok := p.cache[res.Service.Name]
+	services, ok := o.cache[res.Service.Name]
 	if !ok {
 		// we're not going to cache anything
 		// unless there was already a lookup
@@ -277,7 +277,7 @@ func (p *platform) update(res *registry.Result) {
 	if len(res.Service.Nodes) == 0 {
 		switch res.Action {
 		case "delete":
-			delete(p.cache, res.Service.Name)
+			delete(o.cache, res.Service.Name)
 		}
 		return
 	}
@@ -296,7 +296,7 @@ func (p *platform) update(res *registry.Result) {
 	case "create", "update":
 		if service == nil {
 			services = append(services, res.Service)
-			p.cache[res.Service.Name] = services
+			o.cache[res.Service.Name] = services
 			return
 		}
 
@@ -315,7 +315,7 @@ func (p *platform) update(res *registry.Result) {
 		}
 
 		services[index] = res.Service
-		p.cache[res.Service.Name] = services
+		o.cache[res.Service.Name] = services
 	case "delete":
 		if service == nil {
 			return
@@ -339,7 +339,7 @@ func (p *platform) update(res *registry.Result) {
 
 		if len(nodes) == 0 {
 			if len(services) == 1 {
-				delete(p.cache, service.Name)
+				delete(o.cache, service.Name)
 			} else {
 				var srvs []*registry.Service
 				for _, s := range services {
@@ -347,97 +347,87 @@ func (p *platform) update(res *registry.Result) {
 						srvs = append(srvs, s)
 					}
 				}
-				p.cache[service.Name] = srvs
+				o.cache[service.Name] = srvs
 			}
 			return
 		}
 
 		service.Nodes = nodes
 		services[index] = service
-		p.cache[res.Service.Name] = services
+		o.cache[res.Service.Name] = services
 	}
 }
 
-func (p *platform) Close() error {
+func (o *os) Close() error {
 	select {
-	case <-p.exit:
+	case <-o.exit:
 		return nil
 	default:
-		close(p.exit)
+		close(o.exit)
 	}
 	return nil
 }
 
-// TODO: publish event
-func (p *platform) Register(s *registry.Service, opts ...registry.RegisterOption) error {
-	p.Lock()
-	defer p.Unlock()
-
-	if err := p.opts.Registry.Register(s, opts...); err != nil {
-		return err
-	}
+func (o *os) Register(s *registry.Service, opts ...registry.RegisterOption) error {
+	o.Lock()
+	defer o.Unlock()
 
 	service := toProto(s)
+
+	if _, err := o.reg.Register(context.TODO(), &proto2.RegisterRequest{
+		Service: service,
+	}); err != nil {
+		return err
+	}
 
 	hb := &proto.Heartbeat{
 		Id:       s.Nodes[0].Id,
 		Service:  service,
-		Interval: int64(p.opts.Interval.Seconds()),
-		Ttl:      int64((p.opts.Interval.Seconds()) * 5),
+		Interval: int64(o.opts.Interval.Seconds()),
+		Ttl:      int64((o.opts.Interval.Seconds()) * 5),
 	}
 
-	p.heartbeats[hb.Id] = hb
+	o.heartbeats[hb.Id] = hb
 
 	// now register
-	return client.Publish(context.TODO(), client.NewPublication(WatchTopic, &proto.Result{
+	return o.opts.Client.Publish(context.TODO(), o.opts.Client.NewPublication(WatchTopic, &proto.Result{
 		Action:    "update",
 		Service:   service,
 		Timestamp: time.Now().Unix(),
 	}))
 }
 
-// TODO: publish event
-func (p *platform) Deregister(s *registry.Service) error {
-	p.Lock()
-	defer p.Unlock()
+func (o *os) Deregister(s *registry.Service) error {
+	o.Lock()
+	defer o.Unlock()
 
-	if err := p.opts.Registry.Deregister(s); err != nil {
+	service := toProto(s)
+
+	if _, err := o.reg.Deregister(context.TODO(), &proto2.DeregisterRequest{
+		Service: service,
+	}); err != nil {
 		return err
 	}
 
-	delete(p.heartbeats, s.Nodes[0].Id)
+	delete(o.heartbeats, s.Nodes[0].Id)
 
 	// now deregister
-	return client.Publish(context.TODO(), client.NewPublication(WatchTopic, &proto.Result{
+	return o.opts.Client.Publish(context.TODO(), o.opts.Client.NewPublication(WatchTopic, &proto.Result{
 		Action:    "delete",
-		Service:   toProto(s),
+		Service:   service,
 		Timestamp: time.Now().Unix(),
 	}))
 }
 
-func (p *platform) GetService(name string) ([]*registry.Service, error) {
-	p.RLock()
-	if services, ok := p.cache[name]; ok {
-		p.RUnlock()
+func (o *os) GetService(name string) ([]*registry.Service, error) {
+	o.RLock()
+	if services, ok := o.cache[name]; ok {
+		o.RUnlock()
 		return services, nil
 	}
-	p.RUnlock()
+	o.RUnlock()
 
-	// disabled discovery?
-	if !p.opts.Discovery {
-		services, err := p.opts.Registry.GetService(name)
-		if err != nil {
-			return nil, err
-		}
-
-		// cache on lookup
-		p.Lock()
-		p.cache[name] = services
-		p.Unlock()
-		return services, nil
-	}
-
-	rsp, err := p.reg.GetService(context.TODO(), &proto2.GetServiceRequest{Service: name})
+	rsp, err := o.reg.GetService(context.TODO(), &proto2.GetServiceRequest{Service: name})
 	if err != nil {
 		return nil, err
 	}
@@ -448,31 +438,26 @@ func (p *platform) GetService(name string) ([]*registry.Service, error) {
 	}
 
 	// cache on lookup
-	p.Lock()
-	p.cache[name] = services
-	p.Unlock()
+	o.Lock()
+	o.cache[name] = services
+	o.Unlock()
 	return services, nil
 }
 
 // TODO: prepopulate the cache
-func (p *platform) ListServices() ([]*registry.Service, error) {
-	p.RLock()
-	if cache := p.cache; len(cache) > 0 {
-		p.RUnlock()
+func (o *os) ListServices() ([]*registry.Service, error) {
+	o.RLock()
+	if cache := o.cache; len(cache) > 0 {
+		o.RUnlock()
 		var services []*registry.Service
 		for _, service := range cache {
 			services = append(services, service...)
 		}
 		return services, nil
 	}
-	p.RUnlock()
+	o.RUnlock()
 
-	// disabled discovery?
-	if !p.opts.Discovery {
-		return p.opts.Registry.ListServices()
-	}
-
-	rsp, err := p.reg.ListServices(context.TODO(), &proto2.ListServicesRequest{})
+	rsp, err := o.reg.ListServices(context.TODO(), &proto2.ListServicesRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -485,19 +470,14 @@ func (p *platform) ListServices() ([]*registry.Service, error) {
 }
 
 // TODO: subscribe to events rather than the registry itself?
-func (p *platform) Watch() (registry.Watcher, error) {
-	// disabled discovery?
-	if !p.opts.Discovery {
-		return p.opts.Registry.Watch()
-	}
-
-	wc, err := p.reg.Watch(context.TODO(), &proto2.WatchRequest{})
+func (o *os) Watch() (registry.Watcher, error) {
+	wc, err := o.reg.Watch(context.TODO(), &proto2.WatchRequest{})
 	if err != nil {
 		return nil, err
 	}
 	return &watcher{wc}, nil
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }

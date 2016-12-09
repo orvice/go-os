@@ -9,12 +9,12 @@ import (
 	"golang.org/x/net/context"
 )
 
-type platform struct {
+type os struct {
 	opts Options
 	c    db.DBClient
 }
 
-func newPlatform(opts ...Option) DB {
+func newOS(opts ...Option) DB {
 	var options Options
 	for _, o := range opts {
 		o(&options)
@@ -32,7 +32,7 @@ func newPlatform(opts ...Option) DB {
 		options.Table = DefaultTable
 	}
 
-	return &platform{
+	return &os{
 		opts: options,
 		c:    db.NewDBClient("go.micro.srv.db", options.Client),
 	}
@@ -78,24 +78,24 @@ func recordToProto(r Record) *db.Record {
 	}
 }
 
-func (p *platform) Close() error {
+func (o *os) Close() error {
 	return nil
 }
 
-func (p *platform) Init(opts ...Option) error {
+func (o *os) Init(opts ...Option) error {
 	// No reinits
 	return nil
 }
 
-func (p *platform) Options() Options {
-	return p.opts
+func (o *os) Options() Options {
+	return o.opts
 }
 
-func (p *platform) Read(id string) (Record, error) {
-	rsp, err := p.c.Read(context.TODO(), &db.ReadRequest{
+func (o *os) Read(id string) (Record, error) {
+	rsp, err := o.c.Read(context.TODO(), &db.ReadRequest{
 		Database: &db.Database{
-			Name:  p.opts.Database,
-			Table: p.opts.Table,
+			Name:  o.opts.Database,
+			Table: o.opts.Table,
 		},
 		Id: id,
 	})
@@ -106,49 +106,49 @@ func (p *platform) Read(id string) (Record, error) {
 	return protoToRecord(rsp.Record), nil
 }
 
-func (p *platform) Create(r Record) error {
-	_, err := p.c.Create(context.TODO(), &db.CreateRequest{
+func (o *os) Create(r Record) error {
+	_, err := o.c.Create(context.TODO(), &db.CreateRequest{
 		Database: &db.Database{
-			Name:  p.opts.Database,
-			Table: p.opts.Table,
+			Name:  o.opts.Database,
+			Table: o.opts.Table,
 		},
 		Record: recordToProto(r),
 	})
 	return err
 }
 
-func (p *platform) Update(r Record) error {
-	_, err := p.c.Update(context.TODO(), &db.UpdateRequest{
+func (o *os) Update(r Record) error {
+	_, err := o.c.Update(context.TODO(), &db.UpdateRequest{
 		Database: &db.Database{
-			Name:  p.opts.Database,
-			Table: p.opts.Table,
+			Name:  o.opts.Database,
+			Table: o.opts.Table,
 		},
 		Record: recordToProto(r),
 	})
 	return err
 }
 
-func (p *platform) Delete(id string) error {
-	_, err := p.c.Delete(context.TODO(), &db.DeleteRequest{
+func (o *os) Delete(id string) error {
+	_, err := o.c.Delete(context.TODO(), &db.DeleteRequest{
 		Database: &db.Database{
-			Name:  p.opts.Database,
-			Table: p.opts.Table,
+			Name:  o.opts.Database,
+			Table: o.opts.Table,
 		},
 		Id: id,
 	})
 	return err
 }
 
-func (p *platform) Search(md Metadata, limit, offset int64) ([]Record, error) {
+func (o *os) Search(md Metadata, limit, offset int64) ([]Record, error) {
 	metadata := map[string]string{}
 	for k, v := range md {
 		metadata[k] = fmt.Sprintf("%v", v)
 	}
 
-	rsp, err := p.c.Search(context.TODO(), &db.SearchRequest{
+	rsp, err := o.c.Search(context.TODO(), &db.SearchRequest{
 		Database: &db.Database{
-			Name:  p.opts.Database,
-			Table: p.opts.Table,
+			Name:  o.opts.Database,
+			Table: o.opts.Table,
 		},
 		Metadata: metadata,
 		Limit:    limit,
@@ -167,6 +167,6 @@ func (p *platform) Search(md Metadata, limit, offset int64) ([]Record, error) {
 	return records, nil
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }

@@ -16,7 +16,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-type platform struct {
+type os struct {
 	exit chan bool
 	opts selector.Options
 
@@ -38,7 +38,7 @@ var (
 	publishInterval = time.Second * 10
 )
 
-func newPlatform(opts ...selector.Option) Router {
+func newOS(opts ...selector.Option) Router {
 	options := selector.Options{
 		Context: context.TODO(),
 	}
@@ -57,7 +57,7 @@ func newPlatform(opts ...selector.Option) Router {
 		s = server.DefaultServer
 	}
 
-	p := &platform{
+	o := &os{
 		exit:   make(chan bool),
 		opts:   options,
 		client: c,
@@ -67,19 +67,19 @@ func newPlatform(opts ...selector.Option) Router {
 		r:      proto.NewRouterClient("go.micro.srv.router", c),
 	}
 
-	go p.run()
-	return p
+	go o.run()
+	return o
 }
 
-func (p *platform) newStats(s *registry.Service, node *registry.Node) {
-	p.Lock()
-	defer p.Unlock()
+func (o *os) newStats(s *registry.Service, node *registry.Node) {
+	o.Lock()
+	defer o.Unlock()
 
-	if _, ok := p.stats[node.Id]; ok {
+	if _, ok := o.stats[node.Id]; ok {
 		return
 	}
 
-	p.stats[node.Id] = newStats(&registry.Service{
+	o.stats[node.Id] = newStats(&registry.Service{
 		Name:     s.Name,
 		Version:  s.Version,
 		Metadata: s.Metadata,
@@ -87,11 +87,11 @@ func (p *platform) newStats(s *registry.Service, node *registry.Node) {
 	})
 }
 
-func (p *platform) publish() {
-	p.RLock()
-	defer p.RUnlock()
+func (o *os) publish() {
+	o.RLock()
+	defer o.RUnlock()
 
-	opts := p.server.Options()
+	opts := o.server.Options()
 
 	// temporarily build client Service
 	// should just be pulled from opts.Service()
@@ -127,17 +127,17 @@ func (p *platform) publish() {
 	}
 
 	// publish all the stats and reset
-	for _, stat := range p.stats {
+	for _, stat := range o.stats {
 		// create publication
-		msg := p.client.NewPublication(StatsTopic, stat.ToProto(service))
+		msg := o.client.NewPublication(StatsTopic, stat.ToProto(service))
 		// reset the stats
 		stat.Reset()
 		// publish message
-		go p.client.Publish(context.TODO(), msg)
+		go o.client.Publish(context.TODO(), msg)
 	}
 }
 
-func (p *platform) subscribe() {
+func (o *os) subscribe() {
 	// TODO: subscribe to stream of updates from router
 	// send request for every service
 	// recv for every service
@@ -153,7 +153,7 @@ func (p *platform) subscribe() {
 			case <-exit:
 				return
 			default:
-				p.stream(service)
+				o.stream(service)
 				time.Sleep(time.Millisecond * 100)
 			}
 		}
@@ -161,27 +161,27 @@ func (p *platform) subscribe() {
 
 	for {
 		select {
-		case <-p.exit:
+		case <-o.exit:
 			t.Stop()
 			return
 		case <-t.C:
-			p.RLock()
-			cache := p.cache
-			p.RUnlock()
+			o.RLock()
+			cache := o.cache
+			o.RUnlock()
 
 			for name, _ := range cache {
 				if _, ok := streams[name]; ok {
 					continue
 				}
-				fn(name, p.exit)
+				fn(name, o.exit)
 				streams[name] = true
 			}
 		}
 	}
 }
 
-func (p *platform) stream(service string) {
-	stream, err := p.r.SelectStream(context.TODO(), &proto.SelectRequest{Service: service})
+func (o *os) stream(service string) {
+	stream, err := o.r.SelectStream(context.TODO(), &proto.SelectRequest{Service: service})
 	if err != nil {
 		return
 	}
@@ -196,7 +196,7 @@ func (p *platform) stream(service string) {
 		select {
 		case <-exit:
 			// probably errored
-		case <-p.exit:
+		case <-o.exit:
 			stream.Close()
 		}
 	}()
@@ -216,44 +216,44 @@ func (p *platform) stream(service string) {
 
 			// create stats
 			for _, node := range rservice.Nodes {
-				p.newStats(rservice, node)
+				o.newStats(rservice, node)
 				nodes[node.Id] = true
 			}
 		}
 
-		p.Lock()
+		o.Lock()
 		// delete nodes from stats that have been removed
 		// we might actually lost stats by doing this
 		// TODO: move to a reaper
-		if s, ok := p.cache[service]; ok {
+		if s, ok := o.cache[service]; ok {
 			for node, _ := range s.nodes {
 				if _, ok := nodes[node]; !ok {
-					delete(p.stats, node)
+					delete(o.stats, node)
 				}
 			}
 		}
 
 		// cache the service
-		p.cache[service] = newCache(services, rsp.Expires)
-		p.Unlock()
+		o.cache[service] = newCache(services, rsp.Expires)
+		o.Unlock()
 	}
 }
 
-func (p *platform) rselect(service string) (*cache, error) {
+func (o *os) rselect(service string) (*cache, error) {
 	// check the cache
-	p.RLock()
-	if c, ok := p.cache[service]; ok {
+	o.RLock()
+	if c, ok := o.cache[service]; ok {
 		if c.expires == -1 || c.expires > time.Now().Unix() {
-			p.RUnlock()
+			o.RUnlock()
 			return c, nil
 		}
 	}
-	p.RUnlock()
+	o.RUnlock()
 
 	// not cached or expired
 
 	// call router to get selection for service
-	rsp, err := p.r.Select(context.TODO(), &proto.SelectRequest{
+	rsp, err := o.r.Select(context.TODO(), &proto.SelectRequest{
 		Service: service,
 	})
 
@@ -270,46 +270,46 @@ func (p *platform) rselect(service string) (*cache, error) {
 
 		// create stats
 		for _, node := range rservice.Nodes {
-			p.newStats(rservice, node)
+			o.newStats(rservice, node)
 		}
 	}
 
 	// cache the service
 	c := newCache(services, rsp.Expires)
-	p.Lock()
-	p.cache[service] = c
-	p.Unlock()
+	o.Lock()
+	o.cache[service] = c
+	o.Unlock()
 
 	return c, nil
 }
 
-func (p *platform) run() {
+func (o *os) run() {
 	t := time.NewTicker(publishInterval)
 
-	go p.subscribe()
+	go o.subscribe()
 
 	for {
 		select {
-		case <-p.exit:
+		case <-o.exit:
 			t.Stop()
 			return
 		case <-t.C:
-			p.publish()
+			o.publish()
 		}
 	}
 }
 
-func (p *platform) Close() error {
+func (o *os) Close() error {
 	select {
-	case <-p.exit:
+	case <-o.exit:
 		return nil
 	default:
-		close(p.exit)
+		close(o.exit)
 	}
 	return nil
 }
 
-func (p *platform) Init(opts ...selector.Option) error {
+func (o *os) Init(opts ...selector.Option) error {
 	var options selector.Options
 	for _, o := range opts {
 		o(&options)
@@ -318,26 +318,26 @@ func (p *platform) Init(opts ...selector.Option) error {
 	// TODO: Fix. This might all be really bad and hacky
 
 	if c, ok := client.FromContext(options.Context); ok {
-		p.client = c
-		p.r = proto.NewRouterClient("go.micro.srv.router", c)
+		o.client = c
+		o.r = proto.NewRouterClient("go.micro.srv.router", c)
 	}
 
 	if s, ok := server.FromContext(options.Context); ok {
-		p.server = s
+		o.server = s
 	}
 
 	return nil
 }
 
-func (p *platform) Options() selector.Options {
-	return p.opts
+func (o *os) Options() selector.Options {
+	return o.opts
 }
 
-func (p *platform) Record(r Request, node *registry.Node, d time.Duration, err error) {
-	p.Lock()
-	defer p.Unlock()
+func (o *os) Record(r Request, node *registry.Node, d time.Duration, err error) {
+	o.Lock()
+	defer o.Unlock()
 
-	stats, ok := p.stats[node.Id]
+	stats, ok := o.stats[node.Id]
 	if !ok {
 		return
 	}
@@ -345,11 +345,11 @@ func (p *platform) Record(r Request, node *registry.Node, d time.Duration, err e
 	stats.Record(r, node, d, err)
 }
 
-func (p *platform) Stats() ([]*Stats, error) {
+func (o *os) Stats() ([]*Stats, error) {
 	return nil, nil
 }
 
-func (p *platform) Select(service string, opts ...selector.SelectOption) (selector.Next, error) {
+func (o *os) Select(service string, opts ...selector.SelectOption) (selector.Next, error) {
 	// create options
 	var options selector.SelectOptions
 	for _, o := range opts {
@@ -358,18 +358,18 @@ func (p *platform) Select(service string, opts ...selector.SelectOption) (select
 
 	// get service from the cache
 	// or call the router for list
-	cache, err := p.rselect(service)
+	cache, err := o.rselect(service)
 	if err != nil {
 		return nil, err
 	}
 	return cache.Filter(options.Filters)
 }
 
-func (p *platform) Mark(service string, node *registry.Node, err error) {
-	p.Lock()
-	defer p.Unlock()
+func (o *os) Mark(service string, node *registry.Node, err error) {
+	o.Lock()
+	defer o.Unlock()
 
-	stats, ok := p.stats[node.Id]
+	stats, ok := o.stats[node.Id]
 	if !ok {
 		return
 	}
@@ -378,18 +378,18 @@ func (p *platform) Mark(service string, node *registry.Node, err error) {
 	stats.Mark(service, node, err)
 }
 
-func (p *platform) Reset(service string) {
-	p.Lock()
-	defer p.Unlock()
+func (o *os) Reset(service string) {
+	o.Lock()
+	defer o.Unlock()
 
 	// reset stats for the service
-	for _, stat := range p.stats {
+	for _, stat := range o.stats {
 		if stat.service.Name == service {
 			stat.Reset()
 		}
 	}
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }

@@ -30,5 +30,5 @@ type Options struct {
 type Option func(*Options)
 
 func NewDiscovery(opts ...Option) Discovery {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }

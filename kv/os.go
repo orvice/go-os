@@ -17,13 +17,13 @@ import (
 )
 
 /*
-	Platform KV is a consistently hashed in memory key-value store utilising
+	OS KV is a consistently hashed in memory key-value store utilising
 	all the services in the network. Aww yea. Can optionally be namespaced using that provided
 
 	Optional the kv-srv can be used rather than having each client participate in the ring.
 */
 
-type platform struct {
+type os struct {
 	opts Options
 	exit chan bool
 	hash *consistent.Consistent
@@ -51,7 +51,7 @@ var (
 	ReaperEvent = time.Second * 10
 )
 
-func newPlatform(opts ...Option) KV {
+func newOS(opts ...Option) KV {
 	options := Options{
 		Internal: true,
 	}
@@ -71,7 +71,7 @@ func newPlatform(opts ...Option) KV {
 		options.Replicas = 1
 	}
 
-	p := &platform{
+	o := &os{
 		exit:   make(chan bool),
 		opts:   options,
 		hash:   consistent.New(),
@@ -80,11 +80,11 @@ func newPlatform(opts ...Option) KV {
 	}
 
 	// If using gossip then add the handlers and run the broadcaster
-	if !p.opts.Service {
+	if !o.opts.Service {
 		options.Server.Subscribe(
 			options.Server.NewSubscriber(
 				GossipTopic,
-				p.subscriber,
+				o.subscriber,
 				server.InternalSubscriber(options.Internal),
 			),
 		)
@@ -96,10 +96,10 @@ func newPlatform(opts ...Option) KV {
 			),
 		)
 
-		go p.run()
+		go o.run()
 	}
 
-	return p
+	return o
 }
 
 func (a *Announcement) Topic() string {
@@ -114,8 +114,8 @@ func (a *Announcement) ContentType() string {
 	return "application/json"
 }
 
-func (p *platform) address() string {
-	config := p.opts.Server.Options()
+func (o *os) address() string {
+	config := o.opts.Server.Options()
 
 	var advt, host string
 	var port int
@@ -143,20 +143,20 @@ func (p *platform) address() string {
 	return addr
 }
 
-func (p *platform) reap() {
+func (o *os) reap() {
 	t := time.Now().Unix()
 	r := int64(GossipEvent.Seconds() * 1.5)
 
 	// reap nodes
-	p.Lock()
-	for node, seen := range p.nodes {
+	o.Lock()
+	for node, seen := range o.nodes {
 		// Is last greater than GossipEvent time plus some
 		if last := t - seen; last > r {
-			delete(p.nodes, node)
-			p.hash.Remove(node)
+			delete(o.nodes, node)
+			o.hash.Remove(node)
 		}
 	}
-	p.Unlock()
+	o.Unlock()
 
 	// reap keys
 	mtx.Lock()
@@ -175,21 +175,21 @@ func (p *platform) reap() {
 	mtx.Unlock()
 }
 
-func (p *platform) run() {
+func (o *os) run() {
 	// setup the ticker
 	t := time.NewTicker(GossipEvent)
 	r := time.NewTicker(ReaperEvent)
 
-	p.setup()
+	o.setup()
 
 	// now lets go!
 	for {
 		select {
 		case <-t.C:
-			p.publish()
+			o.publish()
 		case <-r.C:
-			p.reap()
-		case <-p.exit:
+			o.reap()
+		case <-o.exit:
 			t.Stop()
 			r.Stop()
 			return
@@ -197,66 +197,66 @@ func (p *platform) run() {
 	}
 }
 
-func (p *platform) publish() error {
+func (o *os) publish() error {
 	a := &Announcement{
-		Namespace: p.opts.Namespace,
-		Address:   p.address(),
+		Namespace: o.opts.Namespace,
+		Address:   o.address(),
 		Timestamp: time.Now().Unix(),
 	}
-	return p.opts.Client.Publish(context.TODO(), a)
+	return o.opts.Client.Publish(context.TODO(), a)
 }
 
 // immediately add self to ring
-func (p *platform) setup() {
+func (o *os) setup() {
 	for i := 0; i < 10; i++ {
 		// wait till there's a valid address from the server
-		if p := strings.Split(p.address(), ":"); len(p) < 2 {
+		if p := strings.Split(o.address(), ":"); len(p) < 2 {
 			time.Sleep(GossipEvent / 100.0)
 			continue
 		}
 		// have a valid address, setup, now
-		p.subscriber(context.Background(), &Announcement{
-			Namespace: p.opts.Namespace,
-			Address:   p.address(),
+		o.subscriber(context.Background(), &Announcement{
+			Namespace: o.opts.Namespace,
+			Address:   o.address(),
 			Timestamp: time.Now().Unix(),
 		})
 		return
 	}
 }
 
-func (p *platform) subscriber(ctx context.Context, a *Announcement) error {
-	p.Lock()
-	defer p.Unlock()
+func (o *os) subscriber(ctx context.Context, a *Announcement) error {
+	o.Lock()
+	defer o.Unlock()
 
-	if p.opts.Namespace != a.Namespace {
+	if o.opts.Namespace != a.Namespace {
 		return nil
 	}
 
-	_, ok := p.nodes[a.Address]
+	_, ok := o.nodes[a.Address]
 	if !ok {
-		p.hash.Add(a.Address)
+		o.hash.Add(a.Address)
 	}
 
-	p.nodes[a.Address] = a.Timestamp
+	o.nodes[a.Address] = a.Timestamp
 	return nil
 }
 
-func (p *platform) Close() error {
+func (o *os) Close() error {
 	select {
-	case <-p.exit:
+	case <-o.exit:
 		return nil
 	default:
-		close(p.exit)
+		close(o.exit)
 
 	}
 	return nil
 
 }
 
-func (p *platform) Get(key string) (*Item, error) {
+func (o *os) Get(key string) (*Item, error) {
 	// if we're using the KV service then call that
-	if p.opts.Service {
-		rsp, err := p.client.Get(context.TODO(), &store.GetRequest{
+	if o.opts.Service {
+		rsp, err := o.client.Get(context.TODO(), &store.GetRequest{
 			Key: key,
 		})
 		if err != nil {
@@ -269,12 +269,12 @@ func (p *platform) Get(key string) (*Item, error) {
 		}, nil
 	}
 
-	nodes, err := p.hash.GetN(key, p.opts.Replicas)
+	nodes, err := o.hash.GetN(key, o.opts.Replicas)
 	if err != nil {
 		return nil, err
 	}
 
-	req := p.opts.Client.NewRequest(serviceName, "KV.Get", &proto.GetRequest{
+	req := o.opts.Client.NewRequest(serviceName, "KV.Get", &proto.GetRequest{
 		Key: key,
 	})
 
@@ -282,7 +282,7 @@ func (p *platform) Get(key string) (*Item, error) {
 
 	for _, node := range nodes {
 		// query node and return
-		if err := p.opts.Client.CallRemote(context.TODO(), node, req, rsp); err == nil {
+		if err := o.opts.Client.CallRemote(context.TODO(), node, req, rsp); err == nil {
 			if rsp.Item == nil {
 				continue
 			}
@@ -297,21 +297,21 @@ func (p *platform) Get(key string) (*Item, error) {
 	return nil, ErrNotFound
 }
 
-func (p *platform) Del(key string) error {
+func (o *os) Del(key string) error {
 	// if we're using the KV service then call that
-	if p.opts.Service {
-		_, err := p.client.Del(context.TODO(), &store.DelRequest{
+	if o.opts.Service {
+		_, err := o.client.Del(context.TODO(), &store.DelRequest{
 			Key: key,
 		})
 		return err
 	}
 
-	nodes, err := p.hash.GetN(key, p.opts.Replicas)
+	nodes, err := o.hash.GetN(key, o.opts.Replicas)
 	if err != nil {
 		return err
 	}
 
-	req := p.opts.Client.NewRequest(serviceName, "KV.Del", &proto.DelRequest{
+	req := o.opts.Client.NewRequest(serviceName, "KV.Del", &proto.DelRequest{
 		Key: key,
 	})
 
@@ -319,7 +319,7 @@ func (p *platform) Del(key string) error {
 
 	for _, node := range nodes {
 		rsp := &proto.DelResponse{}
-		if err := p.opts.Client.CallRemote(context.TODO(), node, req, rsp); err != nil {
+		if err := o.opts.Client.CallRemote(context.TODO(), node, req, rsp); err != nil {
 			gerr = err
 		}
 	}
@@ -327,10 +327,10 @@ func (p *platform) Del(key string) error {
 	return gerr
 }
 
-func (p *platform) Put(item *Item) error {
+func (o *os) Put(item *Item) error {
 	// if we're using the KV service then call that
-	if p.opts.Service {
-		_, err := p.client.Put(context.TODO(), &store.PutRequest{
+	if o.opts.Service {
+		_, err := o.client.Put(context.TODO(), &store.PutRequest{
 			Item: &store.Item{
 				Key:        item.Key,
 				Value:      item.Value,
@@ -340,12 +340,12 @@ func (p *platform) Put(item *Item) error {
 		return err
 	}
 
-	nodes, err := p.hash.GetN(item.Key, p.opts.Replicas)
+	nodes, err := o.hash.GetN(item.Key, o.opts.Replicas)
 	if err != nil {
 		return err
 	}
 
-	req := p.opts.Client.NewRequest(serviceName, "KV.Put", &proto.PutRequest{
+	req := o.opts.Client.NewRequest(serviceName, "KV.Put", &proto.PutRequest{
 		Item: &proto.Item{
 			Key:        item.Key,
 			Value:      item.Value,
@@ -357,7 +357,7 @@ func (p *platform) Put(item *Item) error {
 
 	for _, node := range nodes {
 		rsp := &proto.PutResponse{}
-		if err := p.opts.Client.CallRemote(context.TODO(), node, req, rsp); err != nil {
+		if err := o.opts.Client.CallRemote(context.TODO(), node, req, rsp); err != nil {
 			gerr = err
 		}
 	}
@@ -365,6 +365,6 @@ func (p *platform) Put(item *Item) error {
 	return gerr
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }

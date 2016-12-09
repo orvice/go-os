@@ -48,10 +48,6 @@ type Histogram interface {
 
 type Option func(o *Options)
 
-func NewMetrics(opts ...Option) Metrics {
-	return newPlatform(opts...)
-}
-
 var (
 	DefaultNamespace     = "micro"
 	DefaultBatchInterval = time.Second * 5

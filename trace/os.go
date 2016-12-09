@@ -14,13 +14,13 @@ import (
 
 type spanKey struct{}
 
-type platform struct {
+type os struct {
 	opts  Options
 	spans chan *Span
 	exit  chan bool
 }
 
-func newPlatform(opts ...Option) Trace {
+func newOS(opts ...Option) Trace {
 	var opt Options
 	for _, o := range opts {
 		o(&opt)
@@ -42,15 +42,15 @@ func newPlatform(opts ...Option) Trace {
 		opt.Client = client.DefaultClient
 	}
 
-	p := &platform{
+	o := &os{
 		exit:  make(chan bool),
 		opts:  opt,
 		spans: make(chan *Span, 100),
 	}
 
-	go p.run()
+	go o.run()
 
-	return p
+	return o
 }
 
 func serviceToProto(s *registry.Service) *proto.Service {
@@ -115,59 +115,59 @@ func toProto(s *Span) *proto.Span {
 	}
 }
 
-func (p *platform) send(buf []*Span) {
+func (o *os) send(buf []*Span) {
 	for _, s := range buf {
-		pub := p.opts.Client.NewPublication(p.opts.Topic, toProto(s))
-		p.opts.Client.Publish(context.TODO(), pub)
+		pub := o.opts.Client.NewPublication(o.opts.Topic, toProto(s))
+		o.opts.Client.Publish(context.TODO(), pub)
 	}
 }
 
-func (p *platform) run() {
-	t := time.NewTicker(p.opts.BatchInterval)
+func (o *os) run() {
+	t := time.NewTicker(o.opts.BatchInterval)
 
 	var buf []*Span
 
 	for {
 		select {
-		case s := <-p.spans:
+		case s := <-o.spans:
 			buf = append(buf, s)
-			if len(buf) >= p.opts.BatchSize {
-				go p.send(buf)
+			if len(buf) >= o.opts.BatchSize {
+				go o.send(buf)
 				buf = nil
 			}
 		case <-t.C:
 			// flush
 			if len(buf) > 0 {
-				go p.send(buf)
+				go o.send(buf)
 				buf = nil
 			}
-		case <-p.exit:
+		case <-o.exit:
 			t.Stop()
 			return
 		}
 	}
 }
 
-func (p *platform) Close() error {
+func (o *os) Close() error {
 	select {
-	case <-p.exit:
+	case <-o.exit:
 		return nil
 	default:
-		close(p.exit)
+		close(o.exit)
 	}
 	return nil
 }
 
-func (p *platform) Collect(s *Span) error {
+func (o *os) Collect(s *Span) error {
 	select {
-	case p.spans <- s:
-	case <-time.After(p.opts.CollectTimeout):
+	case o.spans <- s:
+	case <-time.After(o.opts.CollectTimeout):
 		return errors.New("Timed out sending span")
 	}
 	return nil
 }
 
-func (p *platform) NewSpan(s *Span) *Span {
+func (o *os) NewSpan(s *Span) *Span {
 	if s == nil {
 		// completeley new trace
 		return &Span{
@@ -175,7 +175,7 @@ func (p *platform) NewSpan(s *Span) *Span {
 			TraceId:   uuid.NewUUID().String(),
 			ParentId:  "0",
 			Timestamp: time.Now(),
-			Source:    p.opts.Service,
+			Source:    o.opts.Service,
 		}
 	}
 
@@ -196,22 +196,22 @@ func (p *platform) NewSpan(s *Span) *Span {
 		cp.Timestamp = time.Now()
 	}
 	if s.Source == nil {
-		cp.Source = p.opts.Service
+		cp.Source = o.opts.Service
 	}
 
 	return cp
 }
 
-func (p *platform) FromContext(ctx context.Context) (*Span, bool) {
+func (o *os) FromContext(ctx context.Context) (*Span, bool) {
 	s, ok := ctx.Value(spanKey{}).(*Span)
 	return s, ok
 }
 
-func (p *platform) NewContext(ctx context.Context, s *Span) context.Context {
+func (o *os) NewContext(ctx context.Context, s *Span) context.Context {
 	return context.WithValue(ctx, spanKey{}, s)
 }
 
-func (p *platform) FromHeader(md map[string]string) (*Span, bool) {
+func (o *os) FromHeader(md map[string]string) (*Span, bool) {
 	var debug bool
 	if md[DebugHeader] == "1" {
 		debug = true
@@ -222,7 +222,7 @@ func (p *platform) FromHeader(md map[string]string) (*Span, bool) {
 		return nil, false
 	}
 
-	return p.NewSpan(&Span{
+	return o.NewSpan(&Span{
 		Id:       md[SpanHeader],
 		TraceId:  md[TraceHeader],
 		ParentId: md[ParentHeader],
@@ -230,7 +230,7 @@ func (p *platform) FromHeader(md map[string]string) (*Span, bool) {
 	}), true
 }
 
-func (p *platform) NewHeader(md map[string]string, s *Span) map[string]string {
+func (o *os) NewHeader(md map[string]string, s *Span) map[string]string {
 	debug := "0"
 	if s.Debug {
 		debug = "1"
@@ -243,6 +243,6 @@ func (p *platform) NewHeader(md map[string]string, s *Span) map[string]string {
 	return md
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }

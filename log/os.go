@@ -7,7 +7,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-type platform struct {
+type os struct {
 	*logger
 	opts Options
 }
@@ -19,7 +19,7 @@ type logger struct {
 
 type logFunc func(l Level, f Fields, m string) error
 
-func newPlatform(opts ...Option) Log {
+func newOS(opts ...Option) Log {
 	options := Options{
 		Level:   DefaultLevel,
 		Fields:  make(Fields),
@@ -34,7 +34,7 @@ func newPlatform(opts ...Option) Log {
 		options.Outputs = []Output{NewOutput()}
 	}
 
-	p := &platform{
+	o := &os{
 		&logger{
 			f: make(Fields),
 		},
@@ -42,20 +42,20 @@ func newPlatform(opts ...Option) Log {
 	}
 
 	// so ugly
-	p.logger.fn = p.log
+	o.logger.fn = o.log
 
-	return p
+	return o
 }
 
-func (p *platform) log(l Level, f Fields, m string) error {
+func (o *os) log(l Level, f Fields, m string) error {
 	// discard if we're not at the right level
-	if l < p.opts.Level {
+	if l < o.opts.Level {
 		return nil
 	}
 
 	fields := make(Fields)
 
-	for k, v := range p.opts.Fields {
+	for k, v := range o.opts.Fields {
 		fields[k] = v
 	}
 
@@ -71,7 +71,7 @@ func (p *platform) log(l Level, f Fields, m string) error {
 	}
 
 	var gerr error
-	for _, o := range p.opts.Outputs {
+	for _, o := range o.opts.Outputs {
 		if err := o.Send(e); err != nil {
 			gerr = err
 		}
@@ -79,19 +79,19 @@ func (p *platform) log(l Level, f Fields, m string) error {
 	return gerr
 }
 
-func (p *platform) Init(opts ...Option) error {
-	for _, o := range opts {
-		o(&p.opts)
+func (o *os) Init(opts ...Option) error {
+	for _, opt := range opts {
+		opt(&o.opts)
 	}
 	return nil
 }
 
-func (p *platform) Options() Options {
-	return p.opts
+func (o *os) Options() Options {
+	return o.opts
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }
 
 func (l *logger) Debug(args ...interface{}) {

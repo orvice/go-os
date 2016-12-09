@@ -79,5 +79,5 @@ func HandlerWrapper(m Monitor) server.HandlerWrapper {
 }
 
 func NewMonitor(opts ...Option) Monitor {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }

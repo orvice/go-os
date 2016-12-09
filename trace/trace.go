@@ -96,5 +96,5 @@ func HandlerWrapper(t Trace, s *registry.Service) server.HandlerWrapper {
 }
 
 func NewTrace(opts ...Option) Trace {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }

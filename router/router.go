@@ -43,5 +43,5 @@ var (
 )
 
 func NewRouter(opts ...selector.Option) Router {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }

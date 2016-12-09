@@ -2,14 +2,14 @@ package log
 
 import (
 	"encoding/json"
-	"os"
+	los "os"
 )
 
 type output struct {
 	opts OutputOptions
 
 	err error
-	f   *os.File
+	f   *los.File
 }
 
 func (o *output) Send(e *Event) error {
@@ -47,7 +47,7 @@ func NewOutput(opts ...OutputOption) Output {
 		options.Name = DefaultOutputName
 	}
 
-	f, err := os.OpenFile(options.Name, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	f, err := los.OpenFile(options.Name, los.O_CREATE|los.O_APPEND|los.O_WRONLY, 0666)
 
 	return &output{
 		opts: options,

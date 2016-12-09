@@ -95,5 +95,5 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 }
 
 func NewLog(opts ...Option) Log {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }

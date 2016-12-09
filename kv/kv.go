@@ -26,5 +26,5 @@ type Item struct {
 type Option func(o *Options)
 
 func NewKV(opts ...Option) KV {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }

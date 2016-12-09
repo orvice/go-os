@@ -105,5 +105,5 @@ var (
 )
 
 func NewConfig(opts ...Option) Config {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }

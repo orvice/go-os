@@ -11,12 +11,12 @@ import (
 	"golang.org/x/net/context"
 )
 
-type platform struct {
+type os struct {
 	opts Options
 	cl   ev.EventClient
 }
 
-func newPlatform(opts ...Option) Event {
+func newOS(opts ...Option) Event {
 	var options Options
 	for _, o := range opts {
 		o(&options)
@@ -26,7 +26,7 @@ func newPlatform(opts ...Option) Event {
 		options.Client = client.DefaultClient
 	}
 
-	return &platform{
+	return &os{
 		opts: options,
 		cl:   ev.NewEventClient("go.micro.srv.event", options.Client),
 	}
@@ -56,7 +56,7 @@ func toProto(r *Record) *event.Record {
 	}
 }
 
-func (p *platform) Publish(ctx context.Context, r *Record) error {
+func (o *os) Publish(ctx context.Context, r *Record) error {
 	if len(r.Type) == 0 {
 		r.Type = DefaultEventType
 	}
@@ -69,18 +69,18 @@ func (p *platform) Publish(ctx context.Context, r *Record) error {
 		r.Id = uuid.NewUUID().String()
 	}
 
-	pub := p.opts.Client.NewPublication(RecordTopic, toProto(r))
-	return p.opts.Client.Publish(ctx, pub)
+	pub := o.opts.Client.NewPublication(RecordTopic, toProto(r))
+	return o.opts.Client.Publish(ctx, pub)
 }
 
 // currently blocking
-func (p *platform) Subscribe(ctx context.Context, h Handler, types ...string) error {
+func (o *os) Subscribe(ctx context.Context, h Handler, types ...string) error {
 	req := &ev.StreamRequest{}
 	for _, typ := range types {
 		req.Types = append(req.Types, typ)
 	}
 
-	stream, err := p.cl.Stream(ctx, req)
+	stream, err := o.cl.Stream(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -96,6 +96,6 @@ func (p *platform) Subscribe(ctx context.Context, h Handler, types ...string) er
 	return nil
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }

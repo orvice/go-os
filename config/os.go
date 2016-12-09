@@ -10,7 +10,7 @@ import (
 	"github.com/micro/go-micro/client"
 )
 
-type platform struct {
+type os struct {
 	exit chan bool
 	opts Options
 
@@ -29,7 +29,7 @@ type watcher struct {
 	updates chan Value
 }
 
-func newPlatform(opts ...Option) Config {
+func newOS(opts ...Option) Config {
 	options := Options{
 		PollInterval: DefaultPollInterval,
 		Reader:       NewReader(),
@@ -44,79 +44,79 @@ func newPlatform(opts ...Option) Config {
 	}
 
 	if options.Sources == nil {
-		// Set a platform source
+		// Set a os source
 		options.Sources = append(options.Sources, NewSource(SourceClient(options.Client)))
 	}
 
-	p := &platform{
+	o := &os{
 		exit:     make(chan bool),
 		opts:     options,
 		watchers: make(map[int]*watcher),
 	}
 
-	go p.run()
-	return p
+	go o.run()
+	return o
 }
 
-func (p *platform) run() {
-	t := time.NewTicker(p.opts.PollInterval)
+func (o *os) run() {
+	t := time.NewTicker(o.opts.PollInterval)
 
 	for {
 		select {
 		case <-t.C:
-			p.sync()
-		case <-p.exit:
+			o.sync()
+		case <-o.exit:
 			t.Stop()
 			return
 		}
 	}
 }
 
-func (p *platform) loaded() bool {
+func (o *os) loaded() bool {
 	var loaded bool
-	p.RLock()
-	if p.vals != nil {
+	o.RLock()
+	if o.vals != nil {
 		loaded = true
 	}
-	p.RUnlock()
+	o.RUnlock()
 	return loaded
 }
 
-func (p *platform) update() {
+func (o *os) update() {
 	var watchers []*watcher
 
-	p.RLock()
-	for _, w := range p.watchers {
+	o.RLock()
+	for _, w := range o.watchers {
 		watchers = append(watchers, w)
 	}
-	p.RUnlock()
+	o.RUnlock()
 
 	for _, w := range watchers {
 		select {
-		case w.updates <- p.vals.Get(w.path...):
+		case w.updates <- o.vals.Get(w.path...):
 		default:
 		}
 	}
 }
 
 // sync loads all the sources, calls the parser and updates the config
-func (p *platform) sync() {
-	if len(p.opts.Sources) == 0 {
+func (o *os) sync() {
+	if len(o.opts.Sources) == 0 {
 		log.Printf("Zero sources available to sync")
 		return
 	}
 
 	var sets []*ChangeSet
 
-	for _, source := range p.opts.Sources {
+	for _, source := range o.opts.Sources {
 		ch, err := source.Read()
 		// should we actually skip failing sources?
 		// best effort merging right? but what if we
 		// already have good config? that would be screwed
 		if err != nil {
-			p.RLock()
-			vals := p.vals
-			p.RUnlock()
+			o.RLock()
+			vals := o.vals
+			o.RUnlock()
 
 			// if we have no config, we're going to try
 			// load something
@@ -129,47 +129,47 @@ func (p *platform) sync() {
 		sets = append(sets, ch)
 	}
 
-	set, err := p.opts.Reader.Parse(sets...)
+	set, err := o.opts.Reader.Parse(sets...)
 	if err != nil {
 		log.Printf("Failed to parse ChangeSets %v", err)
 		return
 	}
 
-	p.Lock()
-	p.vals, _ = p.opts.Reader.Values(set)
-	p.cset = set
-	p.Unlock()
+	o.Lock()
+	o.vals, _ = o.opts.Reader.Values(set)
+	o.cset = set
+	o.Unlock()
 
-	p.update()
+	o.update()
 }
 
-func (p *platform) Close() error {
+func (o *os) Close() error {
 	select {
-	case <-p.exit:
+	case <-o.exit:
 		return nil
 	default:
-		close(p.exit)
+		close(o.exit)
 	}
 	return nil
 }
 
-func (p *platform) Get(path ...string) Value {
-	if !p.loaded() {
-		p.sync()
+func (o *os) Get(path ...string) Value {
+	if !o.loaded() {
+		o.sync()
 	}
 
-	p.Lock()
-	defer p.Unlock()
+	o.Lock()
+	defer o.Unlock()
 
 	// did sync actually work?
-	if p.vals != nil {
-		return p.vals.Get(path...)
+	if o.vals != nil {
+		return o.vals.Get(path...)
 	}
 
-	ch := p.cset
+	ch := o.cset
 
 	// we are truly screwed, trying to load in a hacked way
-	v, err := p.opts.Reader.Values(ch)
+	v, err := o.opts.Reader.Values(ch)
 	if err != nil {
 		log.Printf("Failed to read values %v trying again", err)
 		// man we're so screwed
@@ -178,77 +178,77 @@ func (p *platform) Get(path ...string) Value {
 		if ch == nil || ch.Data == nil {
 			ch = &ChangeSet{
 				Timestamp: time.Now(),
-				Source:    p.String(),
+				Source:    o.String(),
 				Data:      []byte(`{}`),
 			}
 		}
-		v, _ = p.opts.Reader.Values(ch)
+		v, _ = o.opts.Reader.Values(ch)
 	}
 
 	// lets set it just because
-	p.vals = v
+	o.vals = v
 
-	if p.vals != nil {
-		return p.vals.Get(path...)
+	if o.vals != nil {
+		return o.vals.Get(path...)
 	}
 
 	// ok we're going hardcore now
 	return newValue(nil)
 }
 
-func (p *platform) Del(path ...string) {
-	if !p.loaded() {
-		p.sync()
+func (o *os) Del(path ...string) {
+	if !o.loaded() {
+		o.sync()
 	}
 
-	p.Lock()
-	defer p.Unlock()
+	o.Lock()
+	defer o.Unlock()
 
-	if p.vals != nil {
-		p.vals.Del(path...)
-	}
-}
-
-func (p *platform) Set(val interface{}, path ...string) {
-	if !p.loaded() {
-		p.sync()
-	}
-
-	p.Lock()
-	defer p.Unlock()
-
-	if p.vals != nil {
-		p.vals.Set(val, path...)
+	if o.vals != nil {
+		o.vals.Del(path...)
 	}
 }
 
-func (p *platform) Bytes() []byte {
-	if !p.loaded() {
-		p.sync()
+func (o *os) Set(val interface{}, path ...string) {
+	if !o.loaded() {
+		o.sync()
 	}
 
-	p.Lock()
-	defer p.Unlock()
+	o.Lock()
+	defer o.Unlock()
 
-	if p.vals == nil {
+	if o.vals != nil {
+		o.vals.Set(val, path...)
+	}
+}
+
+func (o *os) Bytes() []byte {
+	if !o.loaded() {
+		o.sync()
+	}
+
+	o.Lock()
+	defer o.Unlock()
+
+	if o.vals == nil {
 		return []byte{}
 	}
 
-	return p.vals.Bytes()
+	return o.vals.Bytes()
 }
 
-func (p *platform) Options() Options {
-	return p.opts
+func (o *os) Options() Options {
+	return o.opts
 }
 
-func (p *platform) String() string {
-	return "platform"
+func (o *os) String() string {
+	return "os"
 }
 
-func (p *platform) Watch(path ...string) (Watcher, error) {
-	value := p.Get(path...)
+func (o *os) Watch(path ...string) (Watcher, error) {
+	value := o.Get(path...)
 
-	p.Lock()
+	o.Lock()
 
 	w := &watcher{
 		exit:    make(chan bool),
@@ -257,17 +257,17 @@ func (p *platform) Watch(path ...string) (Watcher, error) {
 		updates: make(chan Value, 1),
 	}
 
-	id := p.idx
-	p.watchers[id] = w
-	p.idx++
+	id := o.idx
+	o.watchers[id] = w
+	o.idx++
 
-	p.Unlock()
+	o.Unlock()
 
 	go func() {
 		<-w.exit
-		p.Lock()
-		delete(p.watchers, id)
-		p.Unlock()
+		o.Lock()
+		delete(o.watchers, id)
+		o.Unlock()
 	}()
 
 	return w, nil

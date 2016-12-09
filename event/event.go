@@ -33,5 +33,5 @@ var (
 type Option func(o *Options)
 
 func NewEvent(opts ...Option) Event {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }
