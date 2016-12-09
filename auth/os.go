@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"strings"
 	"sync"
 	"time"
 
@@ -20,8 +19,6 @@ type os struct {
 	sync.Mutex
 	t *Token
 }
-
-type tokenKey struct{}
 
 func newOS(opts ...Option) Auth {
 	var options Options
@@ -98,13 +95,13 @@ func (o *os) Token() (*Token, error) {
 }
 
 func (o *os) Introspect(ctx context.Context) (*Token, error) {
-	t, ok := o.FromContext(ctx)
+	t, ok := TokenFromContext(ctx)
 	if !ok {
 		md, kk := metadata.FromContext(ctx)
 		if !kk {
 			return nil, ErrInvalidToken
 		}
-		t, ok = o.FromHeader(md)
+		t, ok = TokenFromHeader(md)
 		if !ok {
 			return nil, ErrInvalidToken
 		}
@@ -138,48 +135,6 @@ func (o *os) Revoke(t *Token) error {
 		RefreshToken: t.RefreshToken,
 	})
 	return err
-}
-
-func (o *os) FromContext(ctx context.Context) (*Token, bool) {
-	t, ok := ctx.Value(tokenKey{}).(*Token)
-	return t, ok
-}
-
-func (o *os) NewContext(ctx context.Context, t *Token) context.Context {
-	return context.WithValue(ctx, tokenKey{}, t)
-}
-
-func (o *os) FromHeader(hd map[string]string) (*Token, bool) {
-	var t string
-	var ok bool
-
-	// range possible auth headers
-	for _, key := range []string{"authorization", "Authorization"} {
-		t, ok = hd[key]
-		if ok {
-			break
-		}
-	}
-
-	// no token
-	if !ok {
-		return nil, false
-	}
-
-	parts := strings.Split(t, " ")
-	if len(parts) != 2 {
-		return nil, false
-	}
-	return &Token{
-		AccessToken: parts[1],
-		TokenType:   parts[0],
-	}, true
-}
-
-func (o *os) NewHeader(hd map[string]string, t *Token) map[string]string {
-	// we basically only store access token
-	hd["authorization"] = t.TokenType + " " + t.AccessToken
-	return hd
 }
 
 func (o *os) String() string {

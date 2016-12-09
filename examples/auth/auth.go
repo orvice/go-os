@@ -25,7 +25,7 @@ func main() {
 
 	fmt.Printf("Retreived Token %+v\n", t)
 
-	ctx := a.NewContext(context.TODO(), t)
+	ctx := auth.ContextWithToken(context.TODO(), t)
 
 	// introspect a token from context
 	t, err = a.Introspect(ctx)

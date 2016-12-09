@@ -25,7 +25,7 @@ func (c *clientWrapper) Call(ctx context.Context, req client.Request, rsp interf
 	}
 
 	// create new context with token
-	newCtx := c.a.NewContext(ctx, t)
+	newCtx := ContextWithToken(ctx, t)
 
 	// get metadata
 	md, ok := metadata.FromContext(newCtx)
@@ -34,7 +34,7 @@ func (c *clientWrapper) Call(ctx context.Context, req client.Request, rsp interf
 	}
 
 	// set auth headers
-	for k, v := range c.a.NewHeader(map[string]string{}, t) {
+	for k, v := range HeaderWithToken(map[string]string{}, t) {
 		md[k] = v
 	}
 
@@ -67,7 +67,7 @@ func handlerWrapper(fn server.HandlerFunc, a Auth) server.HandlerFunc {
 		}
 
 		// create new context with token
-		newCtx := a.NewContext(ctx, t)
+		newCtx := ContextWithToken(ctx, t)
 
 		err = fn(newCtx, req, rsp)
 		return err
