@@ -129,7 +129,7 @@ func main() {
                 db.WithMetadata(db.Metadata{"key": "value"}), 
                 db.WithLimit(10),
                 db.WithOffset(0),
-	)
+        )
         if err != nil {
                 fmt.Println(err)
                 return
