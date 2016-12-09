@@ -53,7 +53,7 @@ type Stats interface {
 type HealthCheck func() (map[string]string, error)
 
 func NewMonitor(opts ...Option) Monitor {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }
 ```
 

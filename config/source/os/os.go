@@ -1,7 +1,7 @@
-package platform
+package os
 
 /*
-	Platform source uses the Micro config-srv
+	OS source uses the Micro config-srv
 */
 
 import (

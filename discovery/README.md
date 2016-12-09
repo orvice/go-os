@@ -39,7 +39,7 @@ type Discovery interface {
 }
 
 func NewDiscovery(opts ...Option) Discovery {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }
 ```
 

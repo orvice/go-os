@@ -20,7 +20,7 @@ type Config interface {
 	Options() Options
 	// Render unusable
 	Close() error
-	// String name of config; platform
+	// String name of config
 	String() string
 }
 
@@ -52,7 +52,7 @@ type Value interface {
 }
 
 func NewConfig(opts ...Option) Config {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }
 ```
 

@@ -10,7 +10,7 @@ func main() {
 	logger := log.NewLog(
 		log.WithLevel(log.InfoLevel),
 		log.WithFields(log.Fields{
-			"logger": "platform",
+			"logger": "os",
 		}),
 		log.WithOutput(
 			log.NewOutput(log.OutputName("/dev/stdout")),

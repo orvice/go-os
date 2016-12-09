@@ -20,7 +20,7 @@ type Item struct {
 }
 
 func NewKV(opts ...Option) KV {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }
 ```
 

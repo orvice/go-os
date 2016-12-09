@@ -48,7 +48,7 @@ type Annotation struct {
 }
 
 func NewTrace(opts ...Option) Trace {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }
 ```
 

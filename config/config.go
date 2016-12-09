@@ -17,7 +17,7 @@ type Config interface {
 	Watch(path ...string) (Watcher, error)
 	// Render config unusable
 	Close() error
-	// String name of config; platform
+	// String name of config
 	String() string
 }
 

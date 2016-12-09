@@ -47,7 +47,7 @@ type Record interface {
 }
 
 func NewDB(opts ...Option) DB {
-        return newPlatform(opts...)
+        return newOS(opts...)
 }
 
 func NewRecord(id string, md Metadata, data interface{}) Record {

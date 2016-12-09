@@ -19,7 +19,7 @@ type SourceOptions struct {
 	// Name, Url, etc
 	Name string
 
-	// Client for platform
+	// Client
 	Client client.Client
 	Hosts  []string
 

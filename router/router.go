@@ -39,7 +39,7 @@ type Request interface {
 }
 
 var (
-	StatsTopic  = "platform.router.stats"
+	StatsTopic  = "micro.router.stats"
 	LabelPrefix = "X-Micro-Label-"
 )
 

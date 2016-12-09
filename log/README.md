@@ -56,7 +56,7 @@ type Output interface {
 }
 
 func NewLog(opts ...Option) Log {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }
 ```
 

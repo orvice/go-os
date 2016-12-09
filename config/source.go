@@ -30,7 +30,7 @@ func (s *source) Read() (*ChangeSet, error) {
 }
 
 func (s *source) String() string {
-	return "platform"
+	return "os"
 }
 
 func (s *source) Watch() (SourceWatcher, error) {

@@ -30,7 +30,7 @@ type Auth interface {
 }
 
 func NewAuth(opts ...Option) Auth {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }
 ```
 

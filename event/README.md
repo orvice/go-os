@@ -29,7 +29,7 @@ type Record struct {
 }
 
 func NewEvent(opts ...Option) Event {
-	return newPlatform(opts...)
+	return newOS(opts...)
 }
 ```
 
