@@ -8,7 +8,6 @@ import (
 
 const (
 	HeartbeatTopic = "micro.discovery.heartbeat"
-	WatchTopic     = "micro.discovery.watch"
 )
 
 // Discovery builds on the registry for heartbeating and client side caching

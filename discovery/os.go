@@ -273,14 +273,6 @@ func (o *os) Register(s *registry.Service, opts ...registry.RegisterOption) erro
 	}
 	o.heartbeats[hb.Id] = hb
 
-	/*
-		return o.opts.Client.Publish(context.TODO(), o.opts.Client.NewPublication(WatchTopic, &proto.Result{
-			Action:    "update",
-			Service:   service,
-			Timestamp: time.Now().Unix(),
-		}))
-	*/
-
 	return grr
 }
 
@@ -308,16 +300,6 @@ func (o *os) Deregister(s *registry.Service) error {
 
 	// remove heartbeat
 	delete(o.heartbeats, s.Nodes[0].Id)
-
-	/*
-		// now deregister
-		return o.opts.Client.Publish(context.TODO(), o.opts.Client.NewPublication(WatchTopic, &proto.Result{
-			Action:    "delete",
-			Service:   service,
-			Timestamp: time.Now().Unix(),
-		}))
-
-	*/
 
 	return grr
 }
