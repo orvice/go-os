@@ -2,6 +2,7 @@
 package discovery
 
 import (
+	"github.com/micro/go-micro/cmd"
 	"github.com/micro/go-micro/registry"
 )
 
@@ -16,6 +17,14 @@ type Discovery interface {
 	registry.Registry
 }
 
+func init() {
+	cmd.DefaultRegistries["os"] = NewRegistry
+}
+
 func NewDiscovery(opts ...registry.Option) Discovery {
+	return newOS(opts...)
+}
+
+func NewRegistry(opts ...registry.Option) registry.Registry {
 	return newOS(opts...)
 }
