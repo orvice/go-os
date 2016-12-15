@@ -1,13 +1,9 @@
 # Discovery [![GoDoc](https://godoc.org/github.com/micro/go-os?status.svg)](https://godoc.org/github.com/micro/go-os/discovery)
 
-Provides a high level pluggable abstraction for service discovery.
-
-Building on ideas from [Eureka 2.0](https://github.com/Netflix/eureka/wiki/Eureka-2.0-Architecture-Overview)
-
-## Interface
+Discovery builds on the go-micro.Registry and is backed by the Micro OS discovery service.
 
 The go-micro registry provides a simple Registry abstraction for various service discovery systems. 
-"Heartbeating" is also done through a simple form of re-registration. Because of this we end up 
+Heartbeating is also done through a simple form of re-registration. Because of this we end up 
 with a system that has limited scaling potential and does not provide much information about 
 service health.
 
@@ -16,14 +12,7 @@ to the heartbeats to determine "liveness" rather than querying the Registry. Dis
 includes an in-memory cache of the Registry using the Watcher. If the Registry fails for any 
 reason Discovery continues to function.
 
-It can be used to augment the Registry behaviour in a go-micro service and provide a better view 
-of the environment. Integration still requires some work.
-
-In the future it will also understand massive failure based on network events and stop 
-from deleting the registry cache.
-
-The platform implementation is backed by a discovery service which acts as a read layer and builds on 
-the Netflix Eureka 2.0 model.
+## Interface
 
 ```go
 // Discovery builds on the registry as a mechanism
@@ -32,18 +21,46 @@ the Netflix Eureka 2.0 model.
 type Discovery interface {
 	// implements the registry interface
 	registry.Registry
-	// starts the watcher, caching and heartbeating
-	Start() error
-	// stops the watcher, caching and hearbeating
-	Stop() error
+	Close() error
 }
 
-func NewDiscovery(opts ...Option) Discovery {
+func NewDiscovery(opts ...registry.Option) Discovery {
 	return newOS(opts...)
 }
 ```
 
 ## Supported Backends
 
-- Micro registry (any plugins; consul, etcd, memory)
-- [Discovery service](https://github.com/micro/discovery-srv)
+- [Discovery Service](https://github.com/micro/discovery-srv)
+
+## Usage
+
+### With Flag
+
+```go
+import _ "github.com/micro/go-os/discovery"
+```
+
+```shell
+go run main.go --registry=os --registry_address=addr1:port,addr2:port,addr3:port
+```
+
+### Direct Use
+
+```go
+import (
+	"github.com/micro/go-micro"
+	"github.com/micro/go-os/discovery"
+)
+
+func main() {
+	r := discovery.NewDiscovery(
+		discovery.Addrs("addr1:port", "addr2:port", "addr3:port"),
+	)
+
+	service := micro.NewService(
+		micro.Name("my.service"),
+		micro.Registry(r),
+	)
+}
+```
