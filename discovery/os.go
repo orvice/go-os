@@ -58,20 +58,39 @@ func newOS(opts ...registry.Option) Discovery {
 	return o
 }
 
-func (o *os) heartbeat(t *time.Ticker) {
-	for _ = range t.C {
-		o.RLock()
-		for _, hb := range o.heartbeats {
-			hb.Timestamp = time.Now().Unix()
-			pub := o.opts.Client.NewPublication(HeartbeatTopic, hb)
-			o.opts.Client.Publish(context.TODO(), pub)
+func (o *os) heartbeat() {
+	t := time.NewTicker(o.opts.Interval)
+
+	for {
+		select {
+		case <-t.C:
+			o.RLock()
+			for _, hb := range o.heartbeats {
+				hb.Timestamp = time.Now().Unix()
+				pub := o.opts.Client.NewPublication(HeartbeatTopic, hb)
+				o.opts.Client.Publish(context.TODO(), pub)
+			}
+			o.RUnlock()
+		case <-o.exit:
+			return
 		}
-		o.RUnlock()
 	}
 }
 
 func (o *os) watch(ch chan *registry.Result) {
-	watch, _ := o.Watch()
+	watch, err := o.Watch()
+	for {
+		if err == nil {
+			break
+		}
+		select {
+		case <-o.exit:
+			return
+		default:
+			time.Sleep(time.Second)
+			watch, err = o.Watch()
+		}
+	}
 	defer watch.Stop()
 
 	for {
@@ -87,21 +106,23 @@ func (o *os) watch(ch chan *registry.Result) {
 			time.Sleep(time.Second)
 			continue
 		}
-		ch <- next
+		select {
+		case ch <- next:
+		case <-o.exit:
+			return
+		}
 	}
 }
 
 func (o *os) run() {
 	ch := make(chan *registry.Result)
-	t := time.NewTicker(o.opts.Interval)
 
 	go o.watch(ch)
-	go o.heartbeat(t)
+	go o.heartbeat()
 
 	for {
 		select {
 		case <-o.exit:
-			t.Stop()
 			return
 		case next, ok := <-ch:
 			if !ok {
