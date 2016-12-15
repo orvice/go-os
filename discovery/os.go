@@ -64,13 +64,19 @@ func (o *os) heartbeat() {
 	for {
 		select {
 		case <-t.C:
+			var heartbeats []*proto.Heartbeat
+
 			o.RLock()
 			for _, hb := range o.heartbeats {
+				heartbeats = append(heartbeats, hb)
+			}
+			o.RUnlock()
+
+			for _, hb := range heartbeats {
 				hb.Timestamp = time.Now().Unix()
 				pub := o.opts.Client.NewPublication(HeartbeatTopic, hb)
 				o.opts.Client.Publish(context.TODO(), pub)
 			}
-			o.RUnlock()
 		case <-o.exit:
 			return
 		}
@@ -243,9 +249,6 @@ func (o *os) Close() error {
 }
 
 func (o *os) Register(s *registry.Service, opts ...registry.RegisterOption) error {
-	o.Lock()
-	defer o.Unlock()
-
 	var grr error
 	service := toProto(s)
 	req := o.opts.Client.NewRequest(
@@ -265,6 +268,7 @@ func (o *os) Register(s *registry.Service, opts ...registry.RegisterOption) erro
 	}
 
 	// create a heartbeat for this service
+	o.Lock()
 	hb := &proto.Heartbeat{
 		Id:       s.Nodes[0].Id,
 		Service:  service,
@@ -272,14 +276,12 @@ func (o *os) Register(s *registry.Service, opts ...registry.RegisterOption) erro
 		Ttl:      int64((o.opts.Interval.Seconds()) * 5),
 	}
 	o.heartbeats[hb.Id] = hb
+	o.Unlock()
 
 	return grr
 }
 
 func (o *os) Deregister(s *registry.Service) error {
-	o.Lock()
-	defer o.Unlock()
-
 	var grr error
 	service := toProto(s)
 	req := o.opts.Client.NewRequest(
@@ -299,7 +301,9 @@ func (o *os) Deregister(s *registry.Service) error {
 	}
 
 	// remove heartbeat
+	o.Lock()
 	delete(o.heartbeats, s.Nodes[0].Id)
+	o.Unlock()
 
 	return grr
 }
@@ -354,11 +358,11 @@ func (o *os) GetService(name string) ([]*registry.Service, error) {
 func (o *os) ListServices() ([]*registry.Service, error) {
 	o.RLock()
 	if cache := o.cache; len(cache) > 0 {
-		o.RUnlock()
 		var services []*registry.Service
 		for _, service := range cache {
 			services = append(services, service...)
 		}
+		o.RUnlock()
 		return services, nil
 	}
 	o.RUnlock()
