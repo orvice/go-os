@@ -1,33 +1,25 @@
 # Go OS [![License](https://img.shields.io/:license-apache-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![GoDoc](https://godoc.org/github.com/micro/go-os?status.svg)](https://godoc.org/github.com/micro/go-os) [![Travis CI](https://api.travis-ci.org/micro/go-os.svg?branch=master)](https://travis-ci.org/micro/go-os) [![Go Report Card](https://goreportcard.com/badge/micro/go-os)](https://goreportcard.com/report/github.com/micro/go-os)
 
-Go-OS is a microservice OS library for [Micro OS](https://github.com/micro/os). It's primary function 
-is to address the higher level requirements for microservices not covered by the Micro toolkit. These include; authentication, 
-dynamic configuration, distributed tracing, instrumentation, logging, monitoring, synchronisation and so on.
+Go OS is a client library for [Micro OS](https://github.com/micro/os)
 
 NOTE: This is still a work in progress. The interfaces may change or break.
 
 ## What's it for?
+
+Micro OS addresses the higher level requirements of microservices not covered by the micro toolkit. These include; 
+authentication, dynamic configuration, distributed tracing, instrumentation, logging, monitoring, synchronisation and so on.
 
 At a certain a scale there's a need for systems that manage identity, configuration, observability, state, etc. 
 These are not core requirements for writing microservices but when building a system with 20+ services or 
 are architecting a system for production use within an organisation it becomes a requirement for software 
 development and operational management.
 
-Just like go-micro, go-os is pluggable and each package is backed by distributed systems which are 
-built for scale. Each package also works independently so you can choose what you want to use rather than 
-having to use everything.
-
 ## How does it work?
 
-Go-OS is a library for the fundamentals of a microservice OS. Each package connects to 
-a backend service which handles that feature. Everything is an interface and pluggable which means you can choose how to 
-architect your OS. Micro OS provides default implementations for everything. You can find the OS services at 
-[github.com/micro/os](https://github.com/micro/os).
-
-Each package can be used independently or integrated using go-micro client and handler wrappers.
+Go OS is a collection of packages each backed by a Micro OS service. Packages can be used independently or integrated 
+using go-micro client and handler wrappers.
 
 ## Features
-Each package provides a feature interface that will be pluggable and backed by a number of services.
 
 Examples of usage can be found in [go-os/examples](https://github.com/micro/go-os/tree/master/examples)
 
@@ -132,8 +124,3 @@ Trace is a client side interface for distributed tracing e.g dapper, zipkin, app
 request may fan out to 20-30 services. Failure may be non deterministic and difficult to track. Distributed tracing is a 
 way of tracking the lifetime of a request. The interface utilises client and server wrappers to simplify using tracing.
 
-## Contributing
-
-We're looking for contributions so please join the [Slack](http://slack.micro.mu) to discuss or look at the open issues. 
-
-Further community wide plugins exist at [github.com/micro/go-plugins](https://github.com/micro/go-plugins).
