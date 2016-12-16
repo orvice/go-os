@@ -273,7 +273,7 @@ func (o *os) Register(s *registry.Service, opts ...registry.RegisterOption) erro
 		Id:       s.Nodes[0].Id,
 		Service:  service,
 		Interval: int64(o.opts.Interval.Seconds()),
-		Ttl:      int64((o.opts.Interval.Seconds()) * 5),
+		Ttl:      int64((o.opts.Interval.Seconds()) * 1.25),
 	}
 	o.heartbeats[hb.Id] = hb
 	o.Unlock()
