@@ -2,9 +2,11 @@
 
 Go OS is a client library for [Micro OS](https://github.com/micro/os)
 
-Each package is backed by a Micro OS service. Packages can be used independently or integrated using go-micro wrappers.
-
 NOTE: This is still a work in progress
+
+## Usage
+
+Each package is backed by a Micro OS service. Packages can be used independently or integrated using go-micro wrappers.
 
 ## Features
 
