@@ -8,8 +8,6 @@ import (
 	"github.com/micro/go-micro/client"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
-
-	"golang.org/x/net/context"
 )
 
 const (
@@ -32,14 +30,6 @@ type Trace interface {
 	// New span with certain fields preset.
 	// Provide parent span if you have it.
 	NewSpan(*Span) *Span
-	// New context with span
-	NewContext(context.Context, *Span) context.Context
-	// Return a span from context
-	FromContext(context.Context) (*Span, bool)
-	// Span to Header
-	NewHeader(map[string]string, *Span) map[string]string
-	// Get span from header
-	FromHeader(map[string]string) (*Span, bool)
 	// Collect spans
 	Collect(*Span) error
 	// Name

@@ -12,8 +12,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-type spanKey struct{}
-
 type os struct {
 	opts  Options
 	spans chan *Span
@@ -200,47 +198,6 @@ func (o *os) NewSpan(s *Span) *Span {
 	}
 
 	return cp
-}
-
-func (o *os) FromContext(ctx context.Context) (*Span, bool) {
-	s, ok := ctx.Value(spanKey{}).(*Span)
-	return s, ok
-}
-
-func (o *os) NewContext(ctx context.Context, s *Span) context.Context {
-	return context.WithValue(ctx, spanKey{}, s)
-}
-
-func (o *os) FromHeader(md map[string]string) (*Span, bool) {
-	var debug bool
-	if md[DebugHeader] == "1" {
-		debug = true
-	}
-
-	// can we get span header and trace header?
-	if len(md[SpanHeader]) == 0 && len(md[TraceHeader]) == 0 {
-		return nil, false
-	}
-
-	return o.NewSpan(&Span{
-		Id:       md[SpanHeader],
-		TraceId:  md[TraceHeader],
-		ParentId: md[ParentHeader],
-		Debug:    debug,
-	}), true
-}
-
-func (o *os) NewHeader(md map[string]string, s *Span) map[string]string {
-	debug := "0"
-	if s.Debug {
-		debug = "1"
-	}
-
-	md[SpanHeader] = s.Id
-	md[TraceHeader] = s.TraceId
-	md[ParentHeader] = s.ParentId
-	md[DebugHeader] = debug
-	return md
 }
 
 func (o *os) String() string {

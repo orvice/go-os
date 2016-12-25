@@ -24,7 +24,7 @@ func (c *clientWrapper) Call(ctx context.Context, req client.Request, rsp interf
 	md, mk := metadata.FromContext(ctx)
 
 	// try pull span from context
-	span, ok = c.t.FromContext(ctx)
+	span, ok = SpanFromContext(ctx)
 	if !ok {
 		if !mk {
 			// metadata is new, let's create a new span
@@ -33,7 +33,7 @@ func (c *clientWrapper) Call(ctx context.Context, req client.Request, rsp interf
 			// ok we got some md
 
 			// can we get the span from the header?
-			span, okk = c.t.FromHeader(md)
+			span, okk = SpanFromHeader(md)
 			if !okk {
 				// no, ok create one!
 				span = c.t.NewSpan(nil)
@@ -70,9 +70,9 @@ func (c *clientWrapper) Call(ctx context.Context, req client.Request, rsp interf
 	span.Destination = &registry.Service{Name: req.Service()}
 
 	// set context key
-	newCtx := c.t.NewContext(ctx, span)
+	newCtx := ContextWithSpan(ctx, span)
 	// set metadata
-	newCtx = metadata.NewContext(newCtx, c.t.NewHeader(md, span))
+	newCtx = metadata.NewContext(newCtx, HeaderWithSpan(md, span))
 
 	// mark client request
 	span.Annotations = append(span.Annotations, &Annotation{
@@ -129,7 +129,7 @@ func handlerWrapper(fn server.HandlerFunc, t Trace, s *registry.Service) server.
 			span = t.NewSpan(nil)
 		} else {
 			// can we gt the span from the header?
-			span, ok = t.FromHeader(md)
+			span, ok = SpanFromHeader(md)
 			if !ok {
 				// no, ok create one
 				span = t.NewSpan(nil)
@@ -152,7 +152,7 @@ func handlerWrapper(fn server.HandlerFunc, t Trace, s *registry.Service) server.
 		span.Destination = &registry.Service{Name: req.Service()}
 
 		// embed the span in the context
-		newCtx = t.NewContext(newCtx, span)
+		newCtx = ContextWithSpan(newCtx, span)
 
 		// defer the completion of the span
 		defer func() {
