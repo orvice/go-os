@@ -6,7 +6,7 @@ NOTE: This is still a work in progress
 
 ## Usage
 
-Each package is backed by a Micro OS service. Packages can be used independently or integrated using go-micro wrappers.
+Each package is backed by a Micro OS service. Packages can be used independently or with go-micro wrappers.
 
 ## Features
 
