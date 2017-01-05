@@ -5,8 +5,8 @@ import (
 
 	"github.com/micro/go-micro/client"
 	"github.com/micro/go-micro/cmd"
-	"github.com/micro/go-micro/examples/server/handler"
-	proto "github.com/micro/go-micro/examples/server/proto/example"
+	"github.com/micro/examples/server/handler"
+	proto "github.com/micro/examples/server/proto/example"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
 

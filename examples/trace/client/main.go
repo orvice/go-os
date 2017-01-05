@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/micro/go-micro/client"
 	"github.com/micro/go-micro/cmd"
-	example "github.com/micro/go-micro/examples/server/proto/example"
+	example "github.com/micro/examples/server/proto/example"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-os/trace"
 	"golang.org/x/net/context"
