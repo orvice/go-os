@@ -6,7 +6,7 @@ but in a real world environment the label may be set in a header from a client a
 ## Running Example
 
 1. Start the routing-srv in github.com/micro/router-srv
-2. Start the greeter-srv in github.com/micro/micro/examples/greeter/server
+2. Start the greeter-srv in github.com/micro/examples/greeter/srv
 3. Run the query 
 	micro query go.micro.srv.router Label.Update '{"label": {"id": "1", "service": "go.micro.srv.greeter", "version": "1.0.0", "key": "greeter", "value": "one", "weight": 50} }'
 4. Run the example
