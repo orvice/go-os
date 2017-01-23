@@ -22,6 +22,9 @@ func (c *clientWrapper) Call(ctx context.Context, req client.Request, rsp interf
 	var err error
 
 	md, mk := metadata.FromContext(ctx)
+	if !mk {
+		md = make(metadata.Metadata)
+	}
 
 	// try pull span from context
 	span, ok = SpanFromContext(ctx)
