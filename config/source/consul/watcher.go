@@ -13,7 +13,7 @@ import (
 type watcher struct {
 	name string
 
-	wp   *watch.WatchPlan
+	wp   *watch.Plan
 	ch   chan *config.ChangeSet
 	exit chan bool
 }
