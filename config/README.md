@@ -56,7 +56,7 @@ func NewConfig(opts ...Option) Config {
 }
 ```
 
-## Supported Backends
+## Supported Backends
 
 - [Config service](https://github.com/micro/config-srv)
 - Consul
