@@ -395,8 +395,15 @@ func (o *os) ListServices() ([]*registry.Service, error) {
 }
 
 // TODO: subscribe to events rather than the registry itself?
-func (o *os) Watch() (registry.Watcher, error) {
-	req := o.opts.Client.NewRequest("go.micro.srv.discovery", "Registry.Watch", &proto2.WatchRequest{})
+func (o *os) Watch(opts ...registry.WatchOption) (registry.Watcher, error) {
+	var wo registry.WatchOptions
+	for _, o := range opts {
+		o(&wo)
+	}
+
+	req := o.opts.Client.NewRequest("go.micro.srv.discovery", "Registry.Watch", &proto2.WatchRequest{
+		Service: wo.Service,
+	})
 
 	var gstream client.Streamer
 	var grr error
