@@ -431,6 +431,10 @@ func (o *os) Watch(opts ...registry.WatchOption) (registry.Watcher, error) {
 	return &watcher{wc}, nil
 }
 
+func (o *os) Options() registry.Options {
+	return o.options
+}
+
 func (o *os) String() string {
 	return "os"
 }
