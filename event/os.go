@@ -13,7 +13,7 @@ import (
 
 type os struct {
 	opts Options
-	cl   ev.EventClient
+	cl   ev.EventService
 }
 
 func newOS(opts ...Option) Event {
@@ -28,7 +28,7 @@ func newOS(opts ...Option) Event {
 
 	return &os{
 		opts: options,
-		cl:   ev.NewEventClient("go.micro.srv.event", options.Client),
+		cl:   ev.EventServiceClient("go.micro.srv.event", options.Client),
 	}
 }
 

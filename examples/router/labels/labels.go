@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
+	hello "github.com/micro/examples/greeter/srv/proto/hello"
 	"github.com/micro/go-micro/client"
 	"github.com/micro/go-micro/cmd"
 	"github.com/micro/go-micro/metadata"
 	"github.com/micro/go-os/router"
-	hello "github.com/micro/examples/greeter/srv/proto/hello"
 
 	"golang.org/x/net/context"
 )

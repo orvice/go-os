@@ -14,7 +14,7 @@ import (
 type os struct {
 	exit chan bool
 	opts Options
-	c    oauth2.Oauth2Client
+	c    oauth2.Oauth2Service
 
 	sync.Mutex
 	t *Token
@@ -32,7 +32,7 @@ func newOS(opts ...Option) Auth {
 	return &os{
 		exit: make(chan bool),
 		opts: options,
-		c:    oauth2.NewOauth2Client("go.micro.srv.auth", options.Client),
+		c:    oauth2.Oauth2ServiceClient("go.micro.srv.auth", options.Client),
 	}
 }
 

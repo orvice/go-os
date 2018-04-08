@@ -11,7 +11,7 @@ import (
 
 type os struct {
 	opts Options
-	c    db.DBClient
+	c    db.DBService
 }
 
 func newOS(opts ...Option) DB {
@@ -34,7 +34,7 @@ func newOS(opts ...Option) DB {
 
 	return &os{
 		opts: options,
-		c:    db.NewDBClient("go.micro.srv.db", options.Client),
+		c:    db.DBServiceClient("go.micro.srv.db", options.Client),
 	}
 }
 

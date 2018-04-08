@@ -11,7 +11,7 @@ import (
 type source struct {
 	opts SourceOptions
 
-	client proto.ConfigClient
+	client proto.ConfigService
 }
 
 func (s *source) Read() (*ChangeSet, error) {
@@ -59,6 +59,6 @@ func NewSource(opts ...SourceOption) Source {
 
 	return &source{
 		opts:   options,
-		client: proto.NewConfigClient("go.micro.srv.config", options.Client),
+		client: proto.ConfigServiceClient("go.micro.srv.config", options.Client),
 	}
 }

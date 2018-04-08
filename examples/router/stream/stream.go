@@ -18,7 +18,7 @@ var (
 func main() {
 	cmd.Init()
 
-	r := proto.NewRouterClient(service, client.DefaultClient)
+	r := proto.RouterServiceClient(service, client.DefaultClient)
 
 	stream, err := r.SelectStream(context.TODO(), &proto.SelectRequest{Service: service})
 	if err != nil {

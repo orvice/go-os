@@ -7,7 +7,7 @@ import (
 )
 
 type sourceWatcher struct {
-	w proto.Config_WatchClient
+	w proto.Config_WatchService
 }
 
 func (w *sourceWatcher) Next() (*ChangeSet, error) {

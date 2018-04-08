@@ -23,7 +23,7 @@ type os struct {
 	client client.Client
 	server server.Server
 
-	r proto.RouterClient
+	r proto.RouterService
 
 	// TODO
 	// selector cache service:[]versions
@@ -64,7 +64,7 @@ func newOS(opts ...selector.Option) Router {
 		server: s,
 		cache:  make(map[string]*cache),
 		stats:  make(map[string]*stats),
-		r:      proto.NewRouterClient("go.micro.srv.router", c),
+		r:      proto.RouterServiceClient("go.micro.srv.router", c),
 	}
 
 	go o.run()
@@ -319,7 +319,7 @@ func (o *os) Init(opts ...selector.Option) error {
 
 	if c, ok := client.FromContext(options.Context); ok {
 		o.client = c
-		o.r = proto.NewRouterClient("go.micro.srv.router", c)
+		o.r = proto.RouterServiceClient("go.micro.srv.router", c)
 	}
 
 	if s, ok := server.FromContext(options.Context); ok {
