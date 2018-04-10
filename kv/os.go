@@ -12,7 +12,7 @@ import (
 	proto "github.com/micro/go-os/kv/proto"
 	store "github.com/micro/kv-srv/proto/store"
 
-	"github.com/micro/consistent"
+	"github.com/asim/consistent"
 	"golang.org/x/net/context"
 )
 
