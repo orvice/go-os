@@ -1,5 +1,10 @@
 module github.com/micro/go-os
 
+replace (
+    github.com/micro/config-srv => github.com/ooobot/config-srv v0.0.0-20161120132431-b5bf69319561
+)
+
+
 require (
 	github.com/SAP/go-hdb v0.13.2 // indirect
 	github.com/StackExchange/wmi v0.0.0-20181212234831-e0a55b97c705 // indirect
