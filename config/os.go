@@ -43,10 +43,6 @@ func newOS(opts ...Option) Config {
 		options.Client = client.DefaultClient
 	}
 
-	if options.Sources == nil {
-		// Set a os source
-		options.Sources = append(options.Sources, NewSource(SourceClient(options.Client)))
-	}
 
 	o := &os{
 		exit:     make(chan bool),
