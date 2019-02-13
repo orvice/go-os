@@ -3,7 +3,7 @@ package config
 import (
 	"time"
 
-	proto "github.com/micro/config-srv/proto/config"
+	proto "github.com/ooobot/config-srv/proto/config"
 	"github.com/micro/go-micro/client"
 	"golang.org/x/net/context"
 )
